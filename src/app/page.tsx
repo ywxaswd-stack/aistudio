@@ -1557,14 +1557,6 @@ export default function Home() {
                             </>
                           )}
                         </Button>
-                        <Button
-                          onClick={generateVideos}
-                          variant="outline"
-                          className="border-purple-500 text-purple-600 hover:bg-purple-50"
-                        >
-                          <Video className="w-4 h-4 mr-2" />
-                          直接生成视频
-                        </Button>
                       </div>
                     </>
                   )}
@@ -1627,7 +1619,16 @@ export default function Home() {
                             {/* 台词 */}
                             <div>
                               <label className="text-xs font-medium text-gray-500">台词</label>
-                              <p className="text-sm mt-1 italic">"{shot.dialogue}"</p>
+                              {typeof shot.dialogue === 'object' && shot.dialogue !== null ? (
+                                <div className="mt-1 space-y-1">
+                                  <p className="text-sm italic">"{shot.dialogue.chinese || ''}"</p>
+                                  {shot.dialogue.english && (
+                                    <p className="text-sm italic text-gray-500">"{shot.dialogue.english}"</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-sm mt-1 italic">"{shot.dialogue}"</p>
+                              )}
                             </div>
 
                             {/* Veo提示词 */}
