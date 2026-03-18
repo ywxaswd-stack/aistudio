@@ -68,9 +68,9 @@ const STEPS = [
   { id: 1, title: "场景设定", icon: Target, description: "选择使用场景和时长" },
   { id: 2, title: "爆款词根", icon: Sparkles, description: "生成词根组合推荐" },
   { id: 3, title: "爆款选题", icon: Lightbulb, description: "生成爆款选题方案" },
-  { id: 4, title: "素材上传", icon: Upload, description: "上传相关素材" },
-  { id: 5, title: "脚本生成", icon: FileText, description: "生成基础脚本" },
-  { id: 6, title: "分镜脚本", icon: Film, description: "按8秒拆分分镜" },
+  { id: 4, title: "脚本生成", icon: FileText, description: "生成基础脚本" },
+  { id: 5, title: "分镜脚本", icon: Film, description: "按8秒拆分分镜" },
+  { id: 6, title: "素材上传", icon: Upload, description: "根据分镜上传素材" },
   { id: 7, title: "视频生成", icon: Video, description: "Veo生成视频" },
 ];
 
@@ -158,6 +158,15 @@ export default function Home() {
   const [shotScript, setShotScript] = useState<any>(null); // 分镜脚本
   const [optimizedShots, setOptimizedShots] = useState<any[]>([]); // 优化后的分镜
   const [videos, setVideos] = useState<any[]>([]);
+  
+  // 追踪已访问的步骤，用于支持返回调整
+  const [visitedSteps, setVisitedSteps] = useState<Set<number>>(new Set([1]));
+  
+  // 更新当前步骤时记录已访问
+  const setCurrentStepWithTrack = (step: number) => {
+    setCurrentStep(step);
+    setVisitedSteps(prev => new Set([...prev, step]));
+  };
 
   // 获取实际行业值
   const getActualIndustry = () => customIndustry.trim() || selectedIndustry;
@@ -233,7 +242,7 @@ export default function Home() {
           videoDuration: videoDuration,
         };
         setIndustryAnalysis(analysisWithMeta);
-        setCurrentStep(2);
+        setCurrentStepWithTrack(2);
         toast.success("赛道分析完成！");
         
         // 自动生成词根组合
@@ -273,7 +282,7 @@ export default function Home() {
           combination: combo,
           is_selected: false,
         })));
-        setCurrentStep(2);
+        setCurrentStepWithTrack(2);
         toast.success("词根组合生成完成！");
       }
     } catch (error) {
@@ -284,7 +293,12 @@ export default function Home() {
   };
 
   // 选择词根组合
+  const [generatingTopicForWordRoot, setGeneratingTopicForWordRoot] = useState<string | null>(null);
+  
   const selectWordRoot = async (wordRootId: string) => {
+    // 如果正在生成中，不响应点击
+    if (generatingTopicForWordRoot) return;
+    
     setWordRoots(prev => prev.map(wr => ({
       ...wr,
       is_selected: wr.id === wordRootId,
@@ -293,8 +307,8 @@ export default function Home() {
     const selected = wordRoots.find(wr => wr.id === wordRootId);
     const actualIndustry = getActualIndustry();
     if (selected && project) {
-      // 生成选题
-      setLoading(true);
+      // 生成选题 - 设置具体哪个词根在生成中
+      setGeneratingTopicForWordRoot(wordRootId);
       try {
         const res = await fetch("/api/topics/generate", {
           method: "POST",
@@ -311,13 +325,13 @@ export default function Home() {
         
         if (data.success) {
           setTopics(data.topics);
-          setCurrentStep(3);
+          setCurrentStepWithTrack(3);
           toast.success("选题生成完成！");
         }
       } catch (error) {
         toast.error("选题生成失败");
       } finally {
-        setLoading(false);
+        setGeneratingTopicForWordRoot(null);
       }
     }
   };
@@ -356,13 +370,46 @@ export default function Home() {
   };
 
   // 选择选题
+  const [generatingScript, setGeneratingScript] = useState(false);
+  
   const selectTopic = async (topicId: string) => {
     setTopics(prev => prev.map(t => ({
       ...t,
       is_selected: t.id === topicId,
     })));
-    setCurrentStep(4);
-    toast.success("选题已确认，请上传素材");
+    
+    // 自动进入脚本生成
+    const selectedTopic = topics.find(t => t.id === topicId);
+    const selectedWordRoot = wordRoots.find(wr => wr.is_selected);
+    
+    if (selectedTopic && selectedWordRoot && project) {
+      setGeneratingScript(true);
+      try {
+        const res = await fetch("/api/scripts/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId: project.id,
+            topic: selectedTopic,
+            wordRoots: selectedWordRoot.combination,
+            materials: [],
+            merchantType: selectedMerchantType,
+            videoDuration: videoDuration,
+          }),
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          setScript(data.script);
+          setCurrentStepWithTrack(4);
+          toast.success("脚本生成完成！");
+        }
+      } catch (error) {
+        toast.error("脚本生成失败");
+      } finally {
+        setGeneratingScript(false);
+      }
+    }
   };
 
   // 上传素材
@@ -434,7 +481,7 @@ export default function Home() {
         if (data.materialAnalysis && data.materialAnalysis.length > 0) {
           setMaterialAnalysis(data.materialAnalysis);
         }
-        setCurrentStep(5);
+        setCurrentStepWithTrack(5);
         toast.success("脚本生成完成！");
       }
     } catch (error) {
@@ -465,7 +512,7 @@ export default function Home() {
       
       if (data.success) {
         setShotScript(data.shotScript);
-        setCurrentStep(6);
+        setCurrentStepWithTrack(6);
         toast.success(`分镜脚本生成完成！共 ${data.shotScript.shotCount} 个分镜`);
       } else {
         toast.error(data.error || "分镜脚本生成失败");
@@ -591,7 +638,7 @@ export default function Home() {
         });
         
         setVeoOperations(newOperations);
-        setCurrentStep(7);
+        setCurrentStepWithTrack(7);
         toast.success(`已提交 ${shots.length} 个视频生成任务`);
       } else {
         toast.error(data.error || "提交失败");
@@ -644,7 +691,7 @@ export default function Home() {
         });
         
         setVeoOperations(newOperations);
-        setCurrentStep(7);
+        setCurrentStepWithTrack(7);
         toast.success(data.message);
       } else {
         toast.error(data.error || "提交失败");
@@ -760,10 +807,10 @@ export default function Home() {
             {STEPS.map((step, index) => (
               <div key={step.id} className="flex items-center">
                 <button
-                  onClick={() => currentStep >= step.id && setCurrentStep(step.id)}
-                  disabled={currentStep < step.id}
+                  onClick={() => visitedSteps.has(step.id) && setCurrentStep(step.id)}
+                  disabled={!visitedSteps.has(step.id)}
                   className={`flex flex-col items-center ${
-                    currentStep >= step.id ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                    visitedSteps.has(step.id) ? "cursor-pointer" : "cursor-not-allowed opacity-50"
                   }`}
                 >
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${
@@ -926,30 +973,6 @@ export default function Home() {
                       />
                     </div>
 
-                    {/* 智能分析预览 */}
-                    {getActualIndustry() && (
-                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg space-y-3">
-                        <h4 className="font-medium text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                          <Lightbulb className="w-4 h-4" />
-                          智能分析预览
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                          <div className="p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
-                            <span className="text-gray-500">商户类型</span>
-                            <p className="font-medium mt-1">{getSelectedMerchantConfig()?.title}</p>
-                          </div>
-                          <div className="p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
-                            <span className="text-gray-500">行业领域</span>
-                            <p className="font-medium mt-1">{getActualIndustry()}</p>
-                          </div>
-                          <div className="p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
-                            <span className="text-gray-500">推荐元素</span>
-                            <p className="font-medium mt-1">{getSelectedMerchantConfig()?.recommendedElements}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
                     <Button
                       onClick={handleStartProject}
                       disabled={loading || !getActualIndustry()}
@@ -1082,12 +1105,22 @@ export default function Home() {
                     <div
                       key={wr.id}
                       onClick={() => selectWordRoot(wr.id)}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all relative ${
                         wr.is_selected
                           ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
                           : "border-gray-200 hover:border-purple-300"
-                      }`}
+                      } ${generatingTopicForWordRoot === wr.id ? 'opacity-75 pointer-events-none' : ''}`}
                     >
+                      {/* 生成中遮罩 */}
+                      {generatingTopicForWordRoot === wr.id && (
+                        <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center z-10">
+                          <div className="flex items-center gap-2 text-purple-600">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span className="text-sm font-medium">正在生成选题...</span>
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <span className="text-lg font-bold text-purple-600">组合 {index + 1}</span>
@@ -1137,7 +1170,17 @@ export default function Home() {
 
           {/* 步骤3: 爆款选题 */}
           {currentStep === 3 && (
-            <div className="space-y-6">
+            <div className="space-y-6 relative">
+              {/* 生成脚本的全局loading */}
+              {generatingScript && (
+                <div className="absolute inset-0 bg-white/80 dark:bg-black/60 z-50 flex items-center justify-center rounded-lg">
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
+                    <span className="text-purple-600 font-medium">正在生成脚本...</span>
+                  </div>
+                </div>
+              )}
+              
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -1171,7 +1214,7 @@ export default function Home() {
                         topic.is_selected
                           ? "border-purple-500 ring-2 ring-purple-500/20"
                           : "border-gray-200 hover:border-purple-300"
-                      }`}
+                      } ${generatingScript ? 'pointer-events-none opacity-50' : ''}`}
                       onClick={() => selectTopic(topic.id)}
                     >
                       {/* 选题头部 */}
@@ -1262,20 +1305,20 @@ export default function Home() {
             </div>
           )}
 
-          {/* 步骤4: 素材上传 */}
+          {/* 步骤4: 脚本生成 */}
           {currentStep === 4 && (
             <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Upload className="w-5 h-5 text-purple-600" />
-                    第4步：上传宣传素材
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    第4步：脚本确认
                   </CardTitle>
                   <CardDescription>
-                    根据你想要宣传的内容上传相关素材，AI将分析素材并融入脚本创作
+                    查看生成的脚本，确认后进入分镜拆分
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   {/* 素材上传指南 */}
                   <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
                     <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
@@ -1398,19 +1441,19 @@ export default function Home() {
                   )}
 
                   <Button
-                    onClick={generateScript}
+                    onClick={generateShotScript}
                     disabled={loading}
                     className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
                   >
                     {loading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        分析素材并生成脚本中...
+                        生成分镜脚本中...
                       </>
                     ) : (
                       <>
-                        <FileText className="w-4 h-4 mr-2" />
-                        {materials.length > 0 ? '分析素材并生成脚本' : '生成脚本（无素材）'}
+                        <Film className="w-4 h-4 mr-2" />
+                        生成分镜脚本
                       </>
                     )}
                   </Button>
@@ -1419,7 +1462,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* 步骤5: 脚本生成 */}
+          {/* 步骤5: 分镜脚本 */}
           {currentStep === 5 && (
             <div className="space-y-6">
               {/* 素材分析结果 */}
