@@ -1305,7 +1305,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* 步骤4: 脚本生成 */}
+          {/* 步骤4: 脚本确认 */}
           {currentStep === 4 && (
             <div className="space-y-6">
               <Card>
@@ -1316,6 +1316,251 @@ export default function Home() {
                   </CardTitle>
                   <CardDescription>
                     查看生成的脚本，确认后进入分镜拆分
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {script && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold">{script.title}</h3>
+                          <p className="text-sm text-gray-500">人设：{script.persona || '根据商户类型自动生成'}</p>
+                        </div>
+                        <Badge className="text-lg px-3 py-1">{script.duration}秒</Badge>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="p-4 bg-purple-50 dark:bg-gray-800 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium flex items-center gap-2">
+                              <span>🎬</span> 开头3秒钩子
+                            </h4>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {script.opening_hook?.visual}
+                          </p>
+                          <p className="text-sm mt-2 italic text-purple-700 dark:text-purple-300">
+                            "{script.opening_hook?.script}"
+                          </p>
+                        </div>
+
+                        <div className="p-4 bg-pink-50 dark:bg-gray-800 rounded-lg">
+                          <h4 className="font-medium mb-3">📝 中间内容</h4>
+                          {script.middle_content?.map((section: any, i: number) => (
+                            <div key={i} className="mb-4 pb-4 border-b border-pink-200 dark:border-pink-800 last:border-0 last:mb-0 last:pb-0">
+                              <div className="flex items-center gap-2 mb-2">
+                                <p className="font-medium text-sm text-pink-600">{section.section}</p>
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">{section.visual}</p>
+                              <p className="text-sm mt-1 italic text-gray-700 dark:text-gray-300">"{section.script}"</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="p-4 bg-orange-50 dark:bg-gray-800 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium flex items-center gap-2">
+                              <span>🎯</span> 结尾引导
+                            </h4>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {script.ending_guide?.visual}
+                          </p>
+                          <p className="text-sm mt-2 italic text-orange-700 dark:text-orange-300">
+                            "{script.ending_guide?.cta}"
+                          </p>
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={generateShotScript}
+                        disabled={loading}
+                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            生成分镜脚本中...
+                          </>
+                        ) : (
+                          <>
+                            <Film className="w-4 h-4 mr-2" />
+                            确认并生成分镜脚本
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  )}
+                  
+                  {!script && (
+                    <div className="text-center py-12">
+                      <FileText className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                      <p className="text-gray-600">请先选择选题以生成脚本</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* 步骤5: 分镜脚本 */}
+          {currentStep === 5 && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Film className="w-5 h-5 text-purple-600" />
+                    第5步：分镜脚本
+                  </CardTitle>
+                  <CardDescription>
+                    按8秒拆分的分镜脚本，查看每个分镜的画面和台词
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {shotScript && shotScript.shots.length > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold">{shotScript.title}</h3>
+                          <p className="text-sm text-gray-500">总时长: {shotScript.totalDuration}秒 · {shotScript.shotCount} 个分镜</p>
+                        </div>
+                        <Button
+                          onClick={optimizeVeoPrompts}
+                          disabled={loading || optimizedShots.length > 0}
+                          variant="outline"
+                        >
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          {optimizedShots.length > 0 ? "提示词已优化" : "优化Veo提示词"}
+                        </Button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {(optimizedShots.length > 0 ? optimizedShots : shotScript.shots).map((shot: any, index: number) => (
+                          <div key={shot.shotId || index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary">分镜 {index + 1}</Badge>
+                                <span className="text-sm text-gray-500">{shot.duration}秒</span>
+                              </div>
+                              <Badge variant={shot.type === 'opening' ? 'default' : shot.type === 'ending' ? 'destructive' : 'outline'}>
+                                {shot.type === 'opening' ? '开头' : shot.type === 'ending' ? '结尾' : '内容'}
+                              </Badge>
+                            </div>
+
+                            <div className="space-y-3">
+                              <div>
+                                <label className="text-xs font-medium text-gray-500">画面描述</label>
+                                <p className="text-sm mt-1">{shot.visual}</p>
+                              </div>
+
+                              <div>
+                                <label className="text-xs font-medium text-gray-500">台词</label>
+                                {typeof shot.dialogue === 'object' && shot.dialogue !== null ? (
+                                  <div className="mt-1 space-y-1">
+                                    <p className="text-sm italic">"{shot.dialogue.chinese || ''}"</p>
+                                    {shot.dialogue.english && (
+                                      <p className="text-sm italic text-gray-500">"{shot.dialogue.english}"</p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="text-sm mt-1 italic">"{shot.dialogue}"</p>
+                                )}
+                              </div>
+
+                              {(shot.veoPrompt || shot.optimizedPrompts) && (
+                                <div className="mt-3 pt-3 border-t">
+                                  <label className="text-xs font-medium text-purple-600">Veo 提示词</label>
+                                  {shot.optimizedPrompts ? (
+                                    <div className="mt-2 space-y-2">
+                                      <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
+                                        <span className="text-xs text-gray-500">中文：</span>
+                                        <p className="text-sm">{shot.optimizedPrompts.chinese}</p>
+                                      </div>
+                                      <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                        <span className="text-xs text-gray-500">English：</span>
+                                        <p className="text-sm">{shot.optimizedPrompts.english}</p>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm mt-1 text-gray-600">{shot.veoPrompt}</p>
+                                  )}
+                                </div>
+                              )}
+
+                              {shot.cameraHint && (
+                                <div className="text-xs text-gray-500 flex items-center gap-1">
+                                  <Video className="w-3 h-3" />
+                                  {shot.cameraHint}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <Button
+                        onClick={() => setCurrentStepWithTrack(6)}
+                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        进入素材上传
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Film className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                      <p className="text-gray-600">请先在步骤4生成脚本后，点击"生成分镜脚本"</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* 步骤6: 素材上传 */}
+          {currentStep === 6 && (
+            <div className="space-y-6">
+              {/* 分镜脚本参考 */}
+              {shotScript && (
+                <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Film className="w-5 h-5 text-purple-600" />
+                      分镜脚本参考
+                    </CardTitle>
+                    <CardDescription>
+                      根据以下分镜提示，上传对应的素材
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {shotScript.shots.map((shot: any, index: number) => (
+                        <div key={index} className="p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="text-xs">分镜{index + 1}</Badge>
+                            <span className="text-xs text-gray-500">{shot.duration}秒</span>
+                          </div>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{shot.visual}</p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {shot.type === 'opening' ? '🎬 开头' : shot.type === 'ending' ? '🎯 结尾' : '📝 内容'}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="w-5 h-5 text-purple-600" />
+                    第6步：素材上传
+                  </CardTitle>
+                  <CardDescription>
+                    根据分镜脚本上传对应素材，用于视频生成
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -1356,7 +1601,7 @@ export default function Home() {
                       </div>
                     </div>
                     <p className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                      💡 提示：上传的素材会在脚本中智能标注使用位置，帮助AI理解你的宣传重点
+                      💡 提示：上传的素材会在视频生成中智能匹配使用
                     </p>
                   </div>
 
@@ -1430,309 +1675,26 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* 素材分析说明 */}
-                  {materials.length > 0 && (
-                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                      <p className="text-sm text-green-700 dark:text-green-300 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" />
-                        AI将分析你的素材并在脚本中标注使用位置
-                      </p>
-                    </div>
-                  )}
-
                   <Button
-                    onClick={generateShotScript}
+                    onClick={submitVeoTasks}
                     disabled={loading}
                     className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
                   >
                     {loading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        生成分镜脚本中...
+                        提交视频生成任务中...
                       </>
                     ) : (
                       <>
-                        <Film className="w-4 h-4 mr-2" />
-                        生成分镜脚本
+                        <Video className="w-4 h-4 mr-2" />
+                        提交视频生成任务
                       </>
                     )}
                   </Button>
                 </CardContent>
               </Card>
             </div>
-          )}
-
-          {/* 步骤5: 分镜脚本 */}
-          {currentStep === 5 && (
-            <div className="space-y-6">
-              {/* 素材分析结果 */}
-              {materialAnalysis.length > 0 && (
-                <Card className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <span className="text-green-600">📊</span> 素材分析结果
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {materialAnalysis.map((mat) => (
-                      <div key={mat.index} className="p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="outline" className="text-xs">
-                            素材{mat.index} · {mat.type}
-                          </Badge>
-                          {mat.suggestedScene && (
-                            <Badge className="text-xs bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-200">
-                              建议场景：{mat.suggestedScene}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{mat.description}</p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-purple-600" />
-                    第5步：脚本确认
-                  </CardTitle>
-                  <CardDescription>
-                    查看生成的脚本，脚本已根据你的素材和宣传重点进行定制
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {script && (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-lg font-semibold">{script.title}</h3>
-                          <p className="text-sm text-gray-500">人设：{script.persona || '根据商户类型自动生成'}</p>
-                        </div>
-                        <Badge className="text-lg px-3 py-1">{script.duration}秒</Badge>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="p-4 bg-purple-50 dark:bg-gray-800 rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium flex items-center gap-2">
-                              <span>🎬</span> 开头3秒钩子
-                              {script.opening_hook?.materialRef && (
-                                <Badge variant="outline" className="text-xs">
-                                  使用：{script.opening_hook.materialRef}
-                                </Badge>
-                              )}
-                            </h4>
-                          </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {script.opening_hook?.visual}
-                          </p>
-                          <p className="text-sm mt-2 italic text-purple-700 dark:text-purple-300">
-                            "{script.opening_hook?.script}"
-                          </p>
-                        </div>
-
-                        <div className="p-4 bg-pink-50 dark:bg-gray-800 rounded-lg">
-                          <h4 className="font-medium mb-3">📝 中间内容</h4>
-                          {script.middle_content?.map((section: any, i: number) => (
-                            <div key={i} className="mb-4 pb-4 border-b border-pink-200 dark:border-pink-800 last:border-0 last:mb-0 last:pb-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                <p className="font-medium text-sm text-pink-600">{section.section}</p>
-                                {section.materialRef && (
-                                  <Badge variant="outline" className="text-xs">
-                                    使用：{section.materialRef}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">{section.visual}</p>
-                              <p className="text-sm mt-1 italic text-gray-700 dark:text-gray-300">"{section.script}"</p>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="p-4 bg-orange-50 dark:bg-gray-800 rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium flex items-center gap-2">
-                              <span>🎯</span> 结尾引导
-                              {script.ending_guide?.materialRef && (
-                                <Badge variant="outline" className="text-xs">
-                                  使用：{script.ending_guide.materialRef}
-                                </Badge>
-                              )}
-                            </h4>
-                          </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {script.ending_guide?.visual}
-                          </p>
-                          <p className="text-sm mt-2 italic text-orange-700 dark:text-orange-300">
-                            "{script.ending_guide?.cta}"
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* 素材使用总览 */}
-                      {script.materialUsagePlan && (
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <p className="text-sm text-blue-700 dark:text-blue-300">
-                            <span className="font-medium">📋 素材使用总览：</span>
-                            {script.materialUsagePlan}
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="flex gap-3">
-                        <Button
-                          onClick={generateShotScript}
-                          disabled={loading}
-                          className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
-                        >
-                          {loading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              生成分镜脚本中...
-                            </>
-                          ) : (
-                            <>
-                              <Film className="w-4 h-4 mr-2" />
-                              生成分镜脚本
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* 步骤6: 视频生成 */}
-          {currentStep === 6 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Film className="w-5 h-5 text-purple-600" />
-                  第6步：分镜脚本
-                </CardTitle>
-                <CardDescription>
-                  按8秒拆分的分镜脚本，支持编辑和优化提示词
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* 分镜列表 */}
-                {shotScript && shotScript.shots.length > 0 ? (
-                  <>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="font-medium">{shotScript.title}</h3>
-                        <p className="text-sm text-gray-500">总时长: {shotScript.totalDuration}秒 · {shotScript.shotCount} 个分镜</p>
-                      </div>
-                      <Button
-                        onClick={optimizeVeoPrompts}
-                        disabled={loading || optimizedShots.length > 0}
-                        variant="outline"
-                      >
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        {optimizedShots.length > 0 ? "提示词已优化" : "优化提示词"}
-                      </Button>
-                    </div>
-
-                    <div className="space-y-4">
-                      {(optimizedShots.length > 0 ? optimizedShots : shotScript.shots).map((shot: any, index: number) => (
-                        <div key={shot.shotId || index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary">分镜 {index + 1}</Badge>
-                              <span className="text-sm text-gray-500">{shot.duration}秒</span>
-                            </div>
-                            <Badge variant={shot.type === 'opening' ? 'default' : shot.type === 'ending' ? 'destructive' : 'outline'}>
-                              {shot.type === 'opening' ? '开头' : shot.type === 'ending' ? '结尾' : '内容'}
-                            </Badge>
-                          </div>
-
-                          <div className="space-y-3">
-                            {/* 画面描述 */}
-                            <div>
-                              <label className="text-xs font-medium text-gray-500">画面描述</label>
-                              <p className="text-sm mt-1">{shot.visual}</p>
-                            </div>
-
-                            {/* 台词 */}
-                            <div>
-                              <label className="text-xs font-medium text-gray-500">台词</label>
-                              {typeof shot.dialogue === 'object' && shot.dialogue !== null ? (
-                                <div className="mt-1 space-y-1">
-                                  <p className="text-sm italic">"{shot.dialogue.chinese || ''}"</p>
-                                  {shot.dialogue.english && (
-                                    <p className="text-sm italic text-gray-500">"{shot.dialogue.english}"</p>
-                                  )}
-                                </div>
-                              ) : (
-                                <p className="text-sm mt-1 italic">"{shot.dialogue}"</p>
-                              )}
-                            </div>
-
-                            {/* Veo提示词 */}
-                            {(shot.veoPrompt || shot.optimizedPrompts) && (
-                              <div className="mt-3 pt-3 border-t">
-                                <label className="text-xs font-medium text-purple-600">Veo 提示词</label>
-                                {shot.optimizedPrompts ? (
-                                  <div className="mt-2 space-y-2">
-                                    <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
-                                      <span className="text-xs text-gray-500">中文：</span>
-                                      <p className="text-sm">{shot.optimizedPrompts.chinese}</p>
-                                    </div>
-                                    <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-                                      <span className="text-xs text-gray-500">English：</span>
-                                      <p className="text-sm">{shot.optimizedPrompts.english}</p>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <p className="text-sm mt-1 text-gray-600">{shot.veoPrompt}</p>
-                                )}
-                              </div>
-                            )}
-
-                            {/* 运镜提示 */}
-                            {shot.cameraHint && (
-                              <div className="text-xs text-gray-500 flex items-center gap-1">
-                                <Video className="w-3 h-3" />
-                                {shot.cameraHint}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <Button
-                      onClick={submitVeoTasks}
-                      disabled={loading}
-                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          提交中...
-                        </>
-                      ) : (
-                        <>
-                          <Video className="w-4 h-4 mr-2" />
-                          提交视频生成任务
-                        </>
-                      )}
-                    </Button>
-                  </>
-                ) : (
-                  <div className="text-center py-12">
-                    <Film className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-600">请先在步骤5生成基础脚本后，点击"生成分镜脚本"</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           )}
 
           {/* 步骤7: 视频生成 */}
