@@ -31,6 +31,8 @@ interface WordRoot {
     elements: string[];
     description: string;
     example: string;
+    conflictIndex?: string;
+    conflictAnalysis?: string;
   };
   is_selected: boolean;
 }
@@ -148,6 +150,7 @@ export default function Home() {
   // 各步骤数据
   const [industryAnalysis, setIndustryAnalysis] = useState<any>(null);
   const [wordRoots, setWordRoots] = useState<WordRoot[]>([]);
+  const [wordRootAnalysis, setWordRootAnalysis] = useState<any>(null); // 词根分析过程
   const [topics, setTopics] = useState<Topic[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [script, setScript] = useState<Script | null>(null);
@@ -261,6 +264,9 @@ export default function Home() {
       const data = await res.json();
       
       if (data.success) {
+        // 保存词根分析过程
+        setWordRootAnalysis(data.analysis || null);
+        
         setWordRoots(data.combinations.map((combo: any, idx: number) => ({
           id: `wr_${idx}`,
           combination: combo,
@@ -1006,46 +1012,112 @@ export default function Home() {
 
           {/* 步骤2: 爆款词根 */}
           {currentStep === 2 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                  第2步：爆款词根组合
-                </CardTitle>
-                <CardDescription>
-                  选择一组词根组合，用于生成爆款选题
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {wordRoots.map((wr) => (
-                  <div
-                    key={wr.id}
-                    onClick={() => selectWordRoot(wr.id)}
-                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                      wr.is_selected
-                        ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
-                        : "border-gray-200 hover:border-purple-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">组合 {wr.combination.id}</h4>
-                      {wr.is_selected && <CheckCircle2 className="w-5 h-5 text-purple-600" />}
+            <div className="space-y-6">
+              {/* 词根分析过程 */}
+              {wordRootAnalysis && (
+                <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <span className="text-blue-600">🧠</span> 词根组合分析过程
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* 行业心理分析 */}
+                    <div className="p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg">
+                      <h4 className="font-medium text-sm text-gray-500 mb-1">行业用户心理</h4>
+                      <p className="text-sm">{wordRootAnalysis.industryPsychology || "分析中..."}</p>
                     </div>
-                    <div className="flex gap-2 flex-wrap mb-2">
-                      {wr.combination.elements.map((elem: string, i: number) => (
-                        <Badge key={i} variant="secondary">{elem}</Badge>
-                      ))}
+                    
+                    {/* 过滤后的词根 */}
+                    <div className="p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg">
+                      <h4 className="font-medium text-sm text-gray-500 mb-2">商户类型过滤后的高权重词根</h4>
+                      <div className="flex gap-2 flex-wrap">
+                        {(wordRootAnalysis.filteredElements || []).map((elem: string, i: number) => (
+                          <Badge key={i} variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-800 dark:text-purple-200">
+                            {elem}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {wr.combination.description}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      示例：{wr.combination.example}
-                    </p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                    
+                    {/* 过滤理由 */}
+                    {wordRootAnalysis.filterReason && (
+                      <div className="p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg">
+                        <h4 className="font-medium text-sm text-gray-500 mb-1">过滤理由</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{wordRootAnalysis.filterReason}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* 词根组合推荐 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-600" />
+                    第2步：选择词根组合
+                  </CardTitle>
+                  <CardDescription>
+                    基于分析结果，为你推荐3组高冲突指数的词根组合
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {wordRoots.map((wr, index) => (
+                    <div
+                      key={wr.id}
+                      onClick={() => selectWordRoot(wr.id)}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                        wr.is_selected
+                          ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
+                          : "border-gray-200 hover:border-purple-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-bold text-purple-600">组合 {index + 1}</span>
+                          {wr.combination.conflictIndex && (
+                            <Badge variant={wr.combination.conflictIndex === '高' ? 'default' : 'secondary'} 
+                                   className={wr.combination.conflictIndex === '高' ? 'bg-green-500' : ''}>
+                              冲突指数：{wr.combination.conflictIndex}
+                            </Badge>
+                          )}
+                        </div>
+                        {wr.is_selected && <CheckCircle2 className="w-5 h-5 text-purple-600" />}
+                      </div>
+                      
+                      {/* 词根标签 */}
+                      <div className="flex gap-2 flex-wrap mb-3">
+                        {wr.combination.elements.map((elem: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-sm py-1 px-3">
+                            {elem}
+                          </Badge>
+                        ))}
+                      </div>
+                      
+                      {/* 冲突分析 */}
+                      {wr.combination.conflictAnalysis && (
+                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm mb-2">
+                          <span className="text-blue-600 font-medium">冲突解析：</span>
+                          <span className="text-gray-600 dark:text-gray-400 ml-1">{wr.combination.conflictAnalysis}</span>
+                        </div>
+                      )}
+                      
+                      {/* 推荐理由 */}
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        {wr.combination.description}
+                      </p>
+                      
+                      {/* 示例标题 */}
+                      <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <span className="text-xs text-gray-500">示例标题：</span>
+                        <span className="text-sm font-medium ml-1">{wr.combination.example}</span>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {/* 步骤3: 爆款选题 */}
