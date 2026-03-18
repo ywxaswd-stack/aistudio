@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
   Target, Sparkles, Lightbulb, Upload, FileText, Video, Film, Clock,
-  CheckCircle2, Loader2, ChevronRight, RefreshCw,
+  CheckCircle2, Loader2, ChevronRight, ChevronLeft, RefreshCw,
   Play, Download, Trash2, Plus
 } from "lucide-react";
 import { toast } from "sonner";
@@ -50,6 +50,8 @@ interface Material {
   type: string;
   url: string;
   description: string;
+  shotIndex?: number;  // 关联的分镜索引
+  category?: string;   // 素材分类（如：柜台场景、产品展示等）
 }
 
 interface Script {
@@ -413,7 +415,11 @@ export default function Home() {
   };
 
   // 上传素材
-  const handleUploadMaterial = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadMaterial = async (
+    e: React.ChangeEvent<HTMLInputElement>, 
+    shotIndex?: number, 
+    category?: string
+  ) => {
     const file = e.target.files?.[0];
     if (!file || !project) return;
 
@@ -421,6 +427,8 @@ export default function Home() {
     formData.append("projectId", project.id);
     formData.append("type", file.type.startsWith("image") ? "image" : "video");
     formData.append("file", file);
+    if (shotIndex !== undefined) formData.append("shotIndex", String(shotIndex));
+    if (category) formData.append("category", category);
 
     setLoading(true);
     try {
@@ -431,8 +439,8 @@ export default function Home() {
       const data = await res.json();
       
       if (data.success) {
-        setMaterials(prev => [...prev, data.material]);
-        toast.success("素材上传成功！");
+        setMaterials(prev => [...prev, { ...data.material, shotIndex, category }]);
+        toast.success(`${category || '素材'}上传成功！`);
       }
     } catch (error) {
       toast.error("上传失败");
@@ -1403,17 +1411,17 @@ export default function Home() {
             </div>
           )}
 
-          {/* 步骤5: 分镜脚本 */}
+          {/* 步骤5: 分镜脚本确认 */}
           {currentStep === 5 && (
             <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Film className="w-5 h-5 text-purple-600" />
-                    第5步：分镜脚本
+                    第5步：分镜脚本确认
                   </CardTitle>
                   <CardDescription>
-                    按8秒拆分的分镜脚本，查看每个分镜的画面和台词
+                    查看并确认分镜脚本，可编辑优化后进入素材上传
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -1421,7 +1429,7 @@ export default function Home() {
                     <>
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="font-semibold">{shotScript.title}</h3>
+                          <h3 className="font-semibold">{shotScript.title || '分镜脚本'}</h3>
                           <p className="text-sm text-gray-500">总时长: {shotScript.totalDuration}秒 · {shotScript.shotCount} 个分镜</p>
                         </div>
                         <Button
@@ -1436,90 +1444,99 @@ export default function Home() {
 
                       <div className="space-y-4">
                         {(optimizedShots.length > 0 ? optimizedShots : shotScript.shots).map((shot: any, index: number) => (
-                          <div key={shot.shotId || index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="secondary">分镜 {index + 1}</Badge>
-                                <span className="text-sm text-gray-500">{shot.duration}秒</span>
-                              </div>
-                              <Badge variant={shot.type === 'opening' ? 'default' : shot.type === 'ending' ? 'destructive' : 'outline'}>
-                                {shot.type === 'opening' ? '开头' : shot.type === 'ending' ? '结尾' : '内容'}
+                          <div key={shot.shotId || index} className="p-4 bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-900/10 dark:to-blue-900/10 rounded-lg border border-purple-100 dark:border-purple-800">
+                            {/* 分镜头部 */}
+                            <div className="flex items-center gap-3 mb-4">
+                              <Badge className="bg-purple-600 text-white text-sm px-3 py-1">
+                                镜头 S{String(index + 1).padStart(2, '0')}
                               </Badge>
+                              <span className="text-sm text-gray-500 font-medium">{shot.duration}秒</span>
+                              <Badge variant={shot.type === 'opening' ? 'default' : shot.type === 'ending' ? 'destructive' : 'secondary'}>
+                                {shot.type === 'opening' ? '🎬 开头' : shot.type === 'ending' ? '🎯 结尾' : '📝 内容'}
+                              </Badge>
+                              {shot.sceneTitle && (
+                                <span className="text-sm text-gray-600 ml-auto">{shot.sceneTitle}</span>
+                              )}
                             </div>
 
-                            <div className="space-y-3">
-                              <div>
-                                <label className="text-xs font-medium text-gray-500">画面描述</label>
-                                <p className="text-sm mt-1">{shot.visual}</p>
-                              </div>
+                            {/* 中文画面描述 - 从 description.visual 或 veoPrompt.chinese 获取 */}
+                            <div className="mb-3">
+                              <label className="text-xs font-medium text-purple-700 flex items-center gap-1 mb-1">
+                                <span>📝</span> 中文画面描述
+                              </label>
+                              <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed bg-white/60 dark:bg-gray-800/60 p-3 rounded">
+                                {shot.description?.visual || shot.veoPrompt?.chinese || shot.visual || '暂无描述'}
+                              </p>
+                            </div>
 
-                              <div>
-                                <label className="text-xs font-medium text-gray-500">台词</label>
-                                {typeof shot.dialogue === 'object' && shot.dialogue !== null ? (
-                                  <div className="mt-1 space-y-1">
-                                    <p className="text-sm italic">"{shot.dialogue.chinese || ''}"</p>
-                                    {shot.dialogue.english && (
-                                      <p className="text-sm italic text-gray-500">"{shot.dialogue.english}"</p>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <p className="text-sm mt-1 italic">"{shot.dialogue}"</p>
-                                )}
-                              </div>
+                            {/* 英文Veo提示词 */}
+                            <div className="mb-3">
+                              <label className="text-xs font-medium text-blue-700 flex items-center gap-1 mb-1">
+                                <span>🌍</span> English Prompt
+                              </label>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed bg-blue-50/50 dark:bg-blue-900/20 p-3 rounded">
+                                {shot.veoPrompt?.english || shot.veoPrompt || '暂无英文描述'}
+                              </p>
+                            </div>
 
-                              {(shot.veoPrompt || shot.optimizedPrompts) && (
-                                <div className="mt-3 pt-3 border-t">
-                                  <label className="text-xs font-medium text-purple-600">Veo 提示词</label>
-                                  {shot.optimizedPrompts ? (
-                                    <div className="mt-2 space-y-2">
-                                      <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
-                                        <span className="text-xs text-gray-500">中文：</span>
-                                        <p className="text-sm">{shot.optimizedPrompts.chinese}</p>
-                                      </div>
-                                      <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-                                        <span className="text-xs text-gray-500">English：</span>
-                                        <p className="text-sm">{shot.optimizedPrompts.english}</p>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="mt-2 space-y-2">
-                                      {typeof shot.veoPrompt === 'object' && shot.veoPrompt !== null ? (
-                                        <>
-                                          <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
-                                            <span className="text-xs text-gray-500">中文：</span>
-                                            <p className="text-sm">{shot.veoPrompt.chinese}</p>
-                                          </div>
-                                          <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-                                            <span className="text-xs text-gray-500">English：</span>
-                                            <p className="text-sm">{shot.veoPrompt.english}</p>
-                                          </div>
-                                        </>
-                                      ) : (
-                                        <p className="text-sm mt-1 text-gray-600">{shot.veoPrompt}</p>
-                                      )}
-                                    </div>
-                                  )}
+                            {/* 台词 */}
+                            {shot.dialogue && (
+                              <div className="mb-3">
+                                <label className="text-xs font-medium text-pink-700 flex items-center gap-1 mb-1">
+                                  <span>💬</span> 台词 / Dialogue
+                                </label>
+                                <div className="bg-pink-50/50 dark:bg-pink-900/20 p-3 rounded">
+                                  <p className="text-sm text-gray-800 dark:text-gray-200 italic">
+                                    "{typeof shot.dialogue === 'object' ? (shot.dialogue.chinese || shot.dialogue.english) : shot.dialogue}"
+                                  </p>
                                 </div>
+                              </div>
+                            )}
+
+                            {/* 场景信息 */}
+                            <div className="flex flex-wrap gap-2 text-xs text-gray-500 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                              {shot.location && (
+                                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                                  📍 {shot.location}
+                                </span>
                               )}
-
-                              {shot.cameraHint && (
-                                <div className="text-xs text-gray-500 flex items-center gap-1">
-                                  <Video className="w-3 h-3" />
-                                  {shot.cameraHint}
-                                </div>
+                              {shot.timeOfDay && (
+                                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                                  🕐 {shot.timeOfDay}
+                                </span>
+                              )}
+                              {shot.colorTone && (
+                                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                                  🎨 {shot.colorTone}
+                                </span>
+                              )}
+                              {shot.cameraWork?.movement && (
+                                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                                  🎥 {shot.cameraWork.movement}
+                                </span>
                               )}
                             </div>
                           </div>
                         ))}
                       </div>
 
-                      <Button
-                        onClick={() => setCurrentStepWithTrack(6)}
-                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        进入素材上传
-                      </Button>
+                      <div className="flex gap-3">
+                        <Button
+                          variant="outline"
+                          onClick={() => setCurrentStepWithTrack(4)}
+                          className="flex-1"
+                        >
+                          <ChevronLeft className="w-4 h-4 mr-2" />
+                          返回修改脚本
+                        </Button>
+                        <Button
+                          onClick={() => setCurrentStepWithTrack(6)}
+                          className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
+                        >
+                          确认分镜，进入素材上传
+                          <ChevronRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
                     </>
                   ) : (
                     <div className="text-center py-12">
@@ -1535,72 +1552,6 @@ export default function Home() {
           {/* 步骤6: 素材上传 */}
           {currentStep === 6 && (
             <div className="space-y-6">
-              {/* 分镜脚本参考 */}
-              {shotScript && (
-                <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Film className="w-5 h-5 text-purple-600" />
-                      分镜脚本参考
-                    </CardTitle>
-                    <CardDescription>
-                      根据以下分镜提示，上传对应的素材
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {shotScript.shots.map((shot: any, index: number) => (
-                        <div key={index} className="p-4 bg-white/60 dark:bg-gray-800/60 rounded-lg border border-purple-100 dark:border-purple-800">
-                          <div className="flex items-center gap-3 mb-3">
-                            <Badge className="bg-purple-600 text-white">镜头 S{String(index + 1).padStart(2, '0')}</Badge>
-                            <span className="text-sm text-gray-500">{shot.duration}秒</span>
-                            <Badge variant="outline" className="text-xs">
-                              {shot.type === 'opening' ? '🎬 开头' : shot.type === 'ending' ? '🎯 结尾' : '📝 内容'}
-                            </Badge>
-                          </div>
-                          
-                          {/* 中文描述 */}
-                          <div className="mb-2">
-                            <span className="text-xs font-medium text-purple-600">中文：</span>
-                            <p className="text-sm text-gray-800 dark:text-gray-200 mt-1 leading-relaxed">
-                              {shot.visual}
-                            </p>
-                          </div>
-                          
-                          {/* 英文描述（veoPrompt） */}
-                          {shot.veoPrompt && (
-                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                              <span className="text-xs font-medium text-blue-600">English：</span>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">
-                                {typeof shot.veoPrompt === 'object' ? shot.veoPrompt.english || shot.veoPrompt.chinese : shot.veoPrompt}
-                              </p>
-                            </div>
-                          )}
-                          
-                          {/* 台词 */}
-                          {shot.dialogue && (
-                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                              <span className="text-xs font-medium text-pink-600">台词：</span>
-                              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 italic">
-                                "{typeof shot.dialogue === 'object' ? shot.dialogue.chinese || shot.dialogue.english : shot.dialogue}"
-                              </p>
-                            </div>
-                          )}
-                          
-                          {/* 运镜提示 */}
-                          {shot.cameraHint && (
-                            <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-                              <Video className="w-3 h-3" />
-                              <span>运镜：{shot.cameraHint}</span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -1608,138 +1559,198 @@ export default function Home() {
                     第6步：素材上传
                   </CardTitle>
                   <CardDescription>
-                    根据分镜脚本上传对应素材，用于视频生成
+                    根据分镜脚本分析，上传对应场景的素材
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* 素材上传指南 */}
-                  <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
-                    <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                      <Lightbulb className="w-4 h-4 text-blue-600" />
-                      建议上传的素材类型
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                      <div className="flex items-start gap-2">
-                        <span className="text-lg">📦</span>
-                        <div>
-                          <span className="font-medium">产品展示</span>
-                          <p className="text-xs text-gray-500">产品包装、外观细节、多角度展示</p>
-                        </div>
+                  {shotScript && shotScript.shots ? (
+                    <>
+                      {/* 智能素材需求分析 */}
+                      <div className="space-y-4">
+                        {shotScript.shots.map((shot: any, index: number) => {
+                          // 从分镜内容提取素材需求
+                          const shotText = [
+                            shot.description?.visual,
+                            shot.veoPrompt?.chinese,
+                            shot.sceneTitle,
+                            shot.location
+                          ].filter(Boolean).join(' ');
+                          
+                          // 分析需要的素材类型
+                          const materialNeeds: { icon: string; label: string; desc: string }[] = [];
+                          
+                          if (shotText.includes('柜台') || shotText.includes('收银') || shotText.includes('cashier')) {
+                            materialNeeds.push({ icon: '🏪', label: '柜台场景', desc: '收银台、柜台全景' });
+                          }
+                          if (shotText.includes('试妆') || shotText.includes(' makeup') || shotText.includes('化妆')) {
+                            materialNeeds.push({ icon: '💄', label: '试妆区域', desc: '自助试妆区、化妆台' });
+                          }
+                          if (shotText.includes('产品') || shotText.includes('product') || shotText.includes('口红') || shotText.includes('眼影')) {
+                            materialNeeds.push({ icon: '📦', label: '产品展示', desc: '产品包装、外观细节' });
+                          }
+                          if (shotText.includes('门店') || shotText.includes('店铺') || shotText.includes('store') || shotText.includes('entrance')) {
+                            materialNeeds.push({ icon: '🚪', label: '门店外观', desc: '店铺门头、入口环境' });
+                          }
+                          if (shotText.includes('人物') || shotText.includes('老板') || shotText.includes('员工') || shotText.includes('female boss') || shotText.includes('人')) {
+                            materialNeeds.push({ icon: '👤', label: '人物素材', desc: '人设展示、动作表情' });
+                          }
+                          if (shotText.includes('环境') || shotText.includes('内部') || shotText.includes('interior')) {
+                            materialNeeds.push({ icon: '🏢', label: '店内环境', desc: '店内布置、氛围展示' });
+                          }
+                          if (shotText.includes('折扣') || shotText.includes('优惠') || shotText.includes('sign') || shotText.includes('price')) {
+                            materialNeeds.push({ icon: '🏷️', label: '促销物料', desc: '折扣牌、价格标签' });
+                          }
+                          
+                          // 如果没有识别到特定需求，添加通用素材需求
+                          if (materialNeeds.length === 0) {
+                            materialNeeds.push({ icon: '🎬', label: `分镜${index + 1}素材`, desc: '与该场景相关的视频或图片' });
+                          }
+                          
+                          return (
+                            <div key={index} className="p-4 bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-900/10 dark:to-blue-900/10 rounded-lg border">
+                              {/* 分镜信息 */}
+                              <div className="flex items-center gap-2 mb-3">
+                                <Badge className="bg-purple-600 text-white">镜头 S{String(index + 1).padStart(2, '0')}</Badge>
+                                <span className="text-xs text-gray-500">{shot.duration}秒</span>
+                                <span className="text-xs text-gray-400 truncate max-w-[200px]">
+                                  {shot.sceneTitle || shot.description?.visual?.slice(0, 30) || ''}...
+                                </span>
+                              </div>
+                              
+                              {/* 所需素材类型 */}
+                              <div className="space-y-3">
+                                {materialNeeds.map((need, needIndex) => (
+                                  <div key={needIndex} className="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg">
+                                    <span className="text-2xl">{need.icon}</span>
+                                    <div className="flex-1">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium text-sm">{need.label}</span>
+                                        <Badge variant="outline" className="text-xs">
+                                          需上传
+                                        </Badge>
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-1">{need.desc}</p>
+                                      
+                                      {/* 该素材类型的上传区域 */}
+                                      <div className="mt-3">
+                                        <Input
+                                          type="file"
+                                          accept="image/*,video/*"
+                                          onChange={(e) => handleUploadMaterial(e, index, need.label)}
+                                          className="hidden"
+                                          id={`file-upload-${index}-${needIndex}`}
+                                        />
+                                        <div className="flex items-center gap-2">
+                                          <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            asChild
+                                            className="flex-1"
+                                          >
+                                            <label htmlFor={`file-upload-${index}-${needIndex}`} className="cursor-pointer">
+                                              <Plus className="w-4 h-4 mr-1" />
+                                              上传{need.label}
+                                            </label>
+                                          </Button>
+                                          
+                                          {/* 显示该分类已上传的文件 */}
+                                          {materials.filter(m => m.shotIndex === index && m.category === need.label).length > 0 && (
+                                            <Badge className="bg-green-100 text-green-700">
+                                              已上传 {materials.filter(m => m.shotIndex === index && m.category === need.label).length}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        
+                                        {/* 显示该分类的已上传文件预览 */}
+                                        <div className="flex gap-2 mt-2 flex-wrap">
+                                          {materials
+                                            .filter(m => m.shotIndex === index && m.category === need.label)
+                                            .map((mat) => (
+                                              <div key={mat.id} className="relative w-16 h-16">
+                                                {mat.type === "image" ? (
+                                                  <img src={mat.url} alt="" className="w-full h-full object-cover rounded" />
+                                                ) : (
+                                                  <video src={mat.url} className="w-full h-full object-cover rounded" />
+                                                )}
+                                                <button
+                                                  onClick={() => setMaterials(prev => prev.filter(m => m.id !== mat.id))}
+                                                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
+                                                >
+                                                  ×
+                                                </button>
+                                              </div>
+                                            ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-lg">✨</span>
-                        <div>
-                          <span className="font-medium">使用效果</span>
-                          <p className="text-xs text-gray-500">使用过程、效果对比、前后变化</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-lg">🏪</span>
-                        <div>
-                          <span className="font-medium">店铺/环境</span>
-                          <p className="text-xs text-gray-500">门店外观、内部环境、氛围展示</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-lg">👤</span>
-                        <div>
-                          <span className="font-medium">人物素材</span>
-                          <p className="text-xs text-gray-500">人设展示、口播视频、剧情片段</p>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                      💡 提示：上传的素材会在视频生成中智能匹配使用
-                    </p>
-                  </div>
 
-                  {/* 上传区域 */}
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                    <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-sm text-gray-600 mb-2">
-                      点击或拖拽文件上传
-                    </p>
-                    <p className="text-xs text-gray-400 mb-4">
-                      支持图片（JPG/PNG）和视频（MP4/MOV）格式
-                    </p>
-                    <Input
-                      type="file"
-                      accept="image/*,video/*"
-                      onChange={handleUploadMaterial}
-                      className="hidden"
-                      id="file-upload"
-                    />
-                    <Button asChild>
-                      <label htmlFor="file-upload" className="cursor-pointer">
-                        <Plus className="w-4 h-4 mr-2" />
-                        选择文件
-                      </label>
-                    </Button>
-                  </div>
+                      {/* 素材上传汇总 */}
+                      {materials.length > 0 && (
+                        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium text-green-700">已上传素材汇总</span>
+                            <Badge className="bg-green-100 text-green-700">{materials.length} 个文件</Badge>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {materials.map((mat) => (
+                              <div key={mat.id} className="relative aspect-video bg-gray-100 rounded overflow-hidden">
+                                {mat.type === "image" ? (
+                                  <img src={mat.url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <video src={mat.url} className="w-full h-full object-cover" />
+                                )}
+                                {mat.category && (
+                                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate">
+                                    {mat.category}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                  {/* 已上传素材 */}
-                  {materials.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-sm">已上传素材 ({materials.length}个)</h4>
+                      <div className="flex gap-3">
                         <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setMaterials([])}
-                          className="text-red-500 hover:text-red-600"
+                          variant="outline"
+                          onClick={() => setCurrentStepWithTrack(5)}
+                          className="flex-1"
                         >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          清空
+                          <ChevronLeft className="w-4 h-4 mr-2" />
+                          返回分镜确认
+                        </Button>
+                        <Button
+                          onClick={submitVeoTasks}
+                          disabled={loading || materials.length === 0}
+                          className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
+                        >
+                          {loading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              提交中...
+                            </>
+                          ) : (
+                            <>
+                              <Video className="w-4 h-4 mr-2" />
+                              提交视频生成
+                            </>
+                          )}
                         </Button>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {materials.map((mat, index) => (
-                          <div key={mat.id} className="relative group">
-                            <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border">
-                              {mat.type === "image" ? (
-                                <img src={mat.url} alt={mat.description || ""} className="w-full h-full object-cover" />
-                              ) : (
-                                <video src={mat.url} className="w-full h-full object-cover" />
-                              )}
-                            </div>
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setMaterials(prev => prev.filter(m => m.id !== mat.id));
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                            <div className="mt-1 text-xs text-gray-500">
-                              素材 {index + 1}: {mat.type === 'image' ? '图片' : '视频'}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                      <p className="text-gray-600">请先在步骤5确认分镜脚本</p>
                     </div>
                   )}
-
-                  <Button
-                    onClick={submitVeoTasks}
-                    disabled={loading}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        提交视频生成任务中...
-                      </>
-                    ) : (
-                      <>
-                        <Video className="w-4 h-4 mr-2" />
-                        提交视频生成任务
-                      </>
-                    )}
-                  </Button>
                 </CardContent>
               </Card>
             </div>
