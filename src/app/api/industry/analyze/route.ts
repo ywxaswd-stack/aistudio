@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { LLMClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { callGemini, buildChatPrompt } from "@/lib/gemini";
+// import { getSupabaseClient } from "@/storage/database/supabase-client";
 
 // 商户类型配置
 const MERCHANT_TYPE_CONFIG: Record<string, { focus: string; style: string; recommendedElements: string }> = {
@@ -76,57 +76,45 @@ export async function POST(request: NextRequest) {
     const merchantTypeKey = merchantType || "ecommerce";
     const config = MERCHANT_TYPE_CONFIG[merchantTypeKey] || MERCHANT_TYPE_CONFIG.ecommerce;
 
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const llmConfig = new Config();
-    const client = new LLMClient(llmConfig, customHeaders);
-
-    const messages = [
-      { role: "system" as const, content: getSystemPrompt(merchantTypeKey) },
-      {
-        role: "user" as const,
-        content: `请分析以下行业：${industry}
+    const userPrompt = `请分析以下行业：${industry}
 
 商户类型：${merchantTypeKey}（${config.focus}）
 
-请结合商户类型特点，给出针对性的分析结果。`,
-      },
-    ];
+请结合商户类型特点，给出针对性的分析结果。`;
 
-    const response = await client.invoke(messages, {
-      model: "doubao-seed-1-8-251228",
-      temperature: 0.7,
-    });
+    const fullPrompt = buildChatPrompt(getSystemPrompt(merchantTypeKey), userPrompt);
+    const responseText = await callGemini(fullPrompt);
 
     // 解析LLM返回的JSON
     let analysisResult;
     try {
       // 提取JSON部分（可能包含markdown代码块）
-      const content = response.content;
+      const content = responseText;
       const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
                         content.match(/\{[\s\S]*\}/);
       const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
       analysisResult = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error("JSON解析错误:", parseError);
-      analysisResult = { rawContent: response.content };
+      analysisResult = { rawContent: responseText };
     }
 
-    // 更新项目记录
-    const supabaseClient = getSupabaseClient();
-    const { error: updateError } = await supabaseClient
-      .from("projects")
-      .update({
-        industry_analysis: {
-          ...analysisResult,
-          merchantType: merchantTypeKey,
-        },
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", projectId);
-
-    if (updateError) {
-      console.error("更新项目失败:", updateError);
-    }
+    // 更新项目记录 - 已注释掉 Supabase
+    // const supabaseClient = getSupabaseClient();
+    // const { error: updateError } = await supabaseClient
+    //   .from("projects")
+    //   .update({
+    //     industry_analysis: {
+    //       ...analysisResult,
+    //       merchantType: merchantTypeKey,
+    //     },
+    //     updated_at: new Date().toISOString(),
+    //   })
+    //   .eq("id", projectId);
+    // if (updateError) {
+    //   console.error("更新项目失败:", updateError);
+    // }
+    console.log("[DB] 更新项目分析结果:", { projectId, merchantType: merchantTypeKey });
 
     return NextResponse.json({
       success: true,

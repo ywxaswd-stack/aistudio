@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { LLMClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { callGemini, buildChatPrompt } from "@/lib/gemini";
+// import { getSupabaseClient } from "@/storage/database/supabase-client";
 
 // 7种爆款标题风格定义
 const TITLE_STYLES = [
@@ -141,23 +141,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const config = new Config();
-    const client = new LLMClient(config, customHeaders);
-
     // 构建素材分析信息（如果有）
     let materialsInfo = "";
     if (materials && materials.length > 0) {
-      materialsInfo = `\n【用户上传素材】\n${materials.map((m: any, i: number) => 
+      materialsInfo = `
+【用户上传素材】
+${materials.map((m: any, i: number) => 
         `${i + 1}. 类型：${m.type}${m.description ? `，描述：${m.description}` : ''}`
-      ).join('\n')}\n选题和标题需要结合素材内容来设计。`;
+      ).join('\n')}
+选题和标题需要结合素材内容来设计。`;
     }
 
-    const messages = [
-      { role: "system" as const, content: getSystemPrompt(merchantTypeKey, duration) },
-      {
-        role: "user" as const,
-        content: `【选题生成任务】
+    const userPrompt = `【选题生成任务】
 
 行业：${industry}
 商户类型：${merchantTypeKey}
@@ -168,19 +163,15 @@ ${wordRootCombination.elements.map((e: string) => `- ${e}`).join('\n')}
 词根说明：${wordRootCombination.description || '无'}
 ${materialsInfo}
 
-请基于以上信息，生成3个完整的爆款选题方案，每个方案包含7种不同风格的标题变体。`,
-      },
-    ];
+请基于以上信息，生成3个完整的爆款选题方案，每个方案包含7种不同风格的标题变体。`;
 
-    const response = await client.invoke(messages, {
-      model: "doubao-seed-1-8-251228",
-      temperature: 0.9,
-    });
+    const fullPrompt = buildChatPrompt(getSystemPrompt(merchantTypeKey, duration), userPrompt);
+    const responseText = await callGemini(fullPrompt);
 
     // 解析LLM返回的JSON
     let topicsData;
     try {
-      const content = response.content;
+      const content = responseText;
       const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
                         content.match(/\{[\s\S]*\}/);
       const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
@@ -190,43 +181,39 @@ ${materialsInfo}
       topicsData = { topics: [] };
     }
 
-    // 保存选题到数据库
-    const supabaseClient = getSupabaseClient();
-    
-    if (topicsData.topics && topicsData.topics.length > 0) {
-      const topicsToInsert = topicsData.topics.map((topic: any) => ({
-        project_id: projectId,
-        title: topic.title,
-        conflict_point: topic.conflictPoint,
-        emotion_hook: topic.emotionHook,
-        is_selected: false,
-      }));
-
-      const { data: insertedTopics, error: insertError } = await supabaseClient
-        .from("topics")
-        .insert(topicsToInsert)
-        .select();
-
-      if (insertError) {
-        console.error("保存选题失败:", insertError);
-      }
-
-      // 合并LLM返回的styleVariants到插入的数据中
-      const topicsWithVariants = insertedTopics?.map((dbTopic: any, idx: number) => ({
-        ...dbTopic,
-        styleVariants: topicsData.topics[idx]?.styleVariants || []
-      })) || topicsData.topics;
-
-      return NextResponse.json({
-        success: true,
-        topics: topicsWithVariants,
-        titleStyles: TITLE_STYLES
-      });
-    }
+    // 保存选题到数据库 - 已注释掉 Supabase
+    // const supabaseClient = getSupabaseClient();
+    // if (topicsData.topics && topicsData.topics.length > 0) {
+    //   const topicsToInsert = topicsData.topics.map((topic: any) => ({
+    //     project_id: projectId,
+    //     title: topic.title,
+    //     conflict_point: topic.conflictPoint,
+    //     emotion_hook: topic.emotionHook,
+    //     is_selected: false,
+    //   }));
+    //   const { data: insertedTopics, error: insertError } = await supabaseClient
+    //     .from("topics")
+    //     .insert(topicsToInsert)
+    //     .select();
+    //   if (insertError) {
+    //     console.error("保存选题失败:", insertError);
+    //   }
+    //   // 合并LLM返回的styleVariants到插入的数据中
+    //   const topicsWithVariants = insertedTopics?.map((dbTopic: any, idx: number) => ({
+    //     ...dbTopic,
+    //     styleVariants: topicsData.topics[idx]?.styleVariants || []
+    //   })) || topicsData.topics;
+    //   return NextResponse.json({
+    //     success: true,
+    //     topics: topicsWithVariants,
+    //     titleStyles: TITLE_STYLES
+    //   });
+    // }
+    console.log("[DB] 保存选题:", { projectId, topicsCount: topicsData.topics?.length || 0 });
 
     return NextResponse.json({
       success: true,
-      topics: [],
+      topics: topicsData.topics || [],
       titleStyles: TITLE_STYLES
     });
   } catch (error) {
@@ -254,24 +241,17 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const config = new Config();
-    const client = new LLMClient(config, customHeaders);
-
     // 构建素材分析信息
     let materialsInfo = "";
     if (materials && materials.length > 0) {
-      materialsInfo = `\n【用户上传素材】\n${materials.map((m: any, i: number) => 
+      materialsInfo = `
+【用户上传素材】
+${materials.map((m: any, i: number) => 
         `${i + 1}. 类型：${m.type}${m.description ? `，描述：${m.description}` : ''}`
       ).join('\n')}`;
     }
 
-    // 使用更高的temperature生成不同的选题
-    const messages = [
-      { role: "system" as const, content: getSystemPrompt(merchantTypeKey, duration) },
-      {
-        role: "user" as const,
-        content: `【选题重新生成任务】请生成完全不同的选题
+    const userPrompt = `【选题重新生成任务】请生成完全不同的选题
 
 行业：${industry}
 商户类型：${merchantTypeKey}
@@ -281,19 +261,15 @@ export async function PUT(request: NextRequest) {
 ${wordRootCombination.elements.map((e: string) => `- ${e}`).join('\n')}
 ${materialsInfo}
 
-请生成3个完全不同的爆款选题方案（与之前的不同），每个方案包含7种不同风格的标题变体。`,
-      },
-    ];
+请生成3个完全不同的爆款选题方案（与之前的不同），每个方案包含7种不同风格的标题变体。`;
 
-    const response = await client.invoke(messages, {
-      model: "doubao-seed-1-8-251228",
-      temperature: 1.0,
-    });
+    const fullPrompt = buildChatPrompt(getSystemPrompt(merchantTypeKey, duration), userPrompt);
+    const responseText = await callGemini(fullPrompt);
 
     // 解析并保存新选题
     let topicsData;
     try {
-      const content = response.content;
+      const content = responseText;
       const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
                         content.match(/\{[\s\S]*\}/);
       const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
@@ -303,42 +279,37 @@ ${materialsInfo}
       topicsData = { topics: [] };
     }
 
-    const supabaseClient = getSupabaseClient();
-    
-    if (topicsData.topics && topicsData.topics.length > 0) {
-      const topicsToInsert = topicsData.topics.map((topic: any) => ({
-        project_id: projectId,
-        title: topic.title,
-        conflict_point: topic.conflictPoint,
-        emotion_hook: topic.emotionHook,
-        is_selected: false,
-      }));
-
-      const { data: insertedTopics, error: insertError } = await supabaseClient
-        .from("topics")
-        .insert(topicsToInsert)
-        .select();
-
-      if (insertError) {
-        console.error("保存选题失败:", insertError);
-      }
-
-      // 合并LLM返回的styleVariants到插入的数据中
-      const topicsWithVariants = insertedTopics?.map((dbTopic: any, idx: number) => ({
-        ...dbTopic,
-        styleVariants: topicsData.topics[idx]?.styleVariants || []
-      })) || topicsData.topics;
-
-      return NextResponse.json({
-        success: true,
-        topics: topicsWithVariants,
-        titleStyles: TITLE_STYLES
-      });
-    }
+    // const supabaseClient = getSupabaseClient();
+    // if (topicsData.topics && topicsData.topics.length > 0) {
+    //   const topicsToInsert = topicsData.topics.map((topic: any) => ({
+    //     project_id: projectId,
+    //     title: topic.title,
+    //     conflict_point: topic.conflictPoint,
+    //     emotion_hook: topic.emotionHook,
+    //     is_selected: false,
+    //   }));
+    //   const { data: insertedTopics, error: insertError } = await supabaseClient
+    //     .from("topics")
+    //     .insert(topicsToInsert)
+    //     .select();
+    //   if (insertError) {
+    //     console.error("保存选题失败:", insertError);
+    //   }
+    //   const topicsWithVariants = insertedTopics?.map((dbTopic: any, idx: number) => ({
+    //     ...dbTopic,
+    //     styleVariants: topicsData.topics[idx]?.styleVariants || []
+    //   })) || topicsData.topics;
+    //   return NextResponse.json({
+    //     success: true,
+    //     topics: topicsWithVariants,
+    //     titleStyles: TITLE_STYLES
+    //   });
+    // }
+    console.log("[DB] 重新生成选题:", { projectId, topicsCount: topicsData.topics?.length || 0 });
 
     return NextResponse.json({
       success: true,
-      topics: [],
+      topics: topicsData.topics || [],
       titleStyles: TITLE_STYLES
     });
   } catch (error) {

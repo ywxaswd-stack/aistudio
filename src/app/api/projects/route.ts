@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+// import { getSupabaseClient } from "@/storage/database/supabase-client";
 import { z } from "zod";
 
 // 创建项目的请求schema
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createProjectSchema.parse(body);
 
-    const client = getSupabaseClient();
+    // const client = getSupabaseClient();
     
     // 构建项目数据，将商户类型和时长信息存储在 industry_analysis 中
     const projectData: any = {
@@ -31,17 +31,25 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    const { data, error } = await client
-      .from("projects")
-      .insert(projectData)
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, project: data });
+    // const { data, error } = await client
+    //   .from("projects")
+    //   .insert(projectData)
+    //   .select()
+    //   .single();
+    // if (error) {
+    //   return NextResponse.json({ error: error.message }, { status: 500 });
+    // }
+    // return NextResponse.json({ success: true, project: data });
+    
+    // 模拟返回项目数据
+    const mockProject = {
+      id: "mock-" + Date.now(),
+      ...projectData,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    console.log("[DB] 创建项目:", mockProject);
+    return NextResponse.json({ success: true, project: mockProject });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -59,28 +67,25 @@ export async function POST(request: NextRequest) {
 // 获取项目列表
 export async function GET(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const status = searchParams.get("status");
-
-    let query = client
-      .from("projects")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    if (status) {
-      query = query.eq("status", status);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, projects: data });
+    // const client = getSupabaseClient();
+    // const { searchParams } = new URL(request.url);
+    // const limit = parseInt(searchParams.get("limit") || "10");
+    // const status = searchParams.get("status");
+    // let query = client
+    //   .from("projects")
+    //   .select("*")
+    //   .order("created_at", { ascending: false })
+    //   .limit(limit);
+    // if (status) {
+    //   query = query.eq("status", status);
+    // }
+    // const { data, error } = await query;
+    // if (error) {
+    //   return NextResponse.json({ error: error.message }, { status: 500 });
+    // }
+    // return NextResponse.json({ success: true, projects: data });
+    console.log("[DB] 获取项目列表");
+    return NextResponse.json({ success: true, projects: [] });
   } catch (error) {
     return NextResponse.json(
       { error: "获取项目列表失败" },

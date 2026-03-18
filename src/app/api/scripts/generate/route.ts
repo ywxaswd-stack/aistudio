@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { LLMClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { callGemini, buildChatPrompt } from "@/lib/gemini";
+// import { getSupabaseClient } from "@/storage/database/supabase-client";
 
 // 商户类型配置
 const MERCHANT_TYPE_CONFIG: Record<string, { 
@@ -85,9 +85,14 @@ const getSystemPrompt = (
   
   let materialSection = '';
   if (materialAnalysis && materialAnalysis.length > 0) {
-    materialSection = `\n\n【素材分析结果】\n${materialAnalysis.map(m => 
+    materialSection = `
+
+【素材分析结果】
+${materialAnalysis.map(m => 
       `素材${m.index}：${m.type}${m.description ? `（${m.description}）` : ''}\n建议使用场景：${m.suggestedScene}`
-    ).join('\n\n')}\n\n请在脚本中合理使用这些素材，在相关部分标注使用哪个素材。`;
+    ).join('\n\n')}
+
+请在脚本中合理使用这些素材，在相关部分标注使用哪个素材。`;
   } else {
     materialSection = '\n\n【素材提示】用户暂未上传素材，脚本设计时请考虑后续用户可能上传的素材类型（产品图片、使用视频、环境照片等），留出素材占位位置。';
   }
@@ -178,69 +183,57 @@ export async function POST(request: NextRequest) {
     // 分析素材
     const materialAnalysis = analyzeMaterials(materials || []);
 
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const config = new Config();
-    const client = new LLMClient(config, customHeaders);
-
-    const messages = [
-      { role: "system" as const, content: getSystemPrompt(merchantTypeKey, materialAnalysis, duration) },
-      {
-        role: "user" as const,
-        content: `【选题信息】
+    const userPrompt = `【选题信息】
 标题：${topic.title}
 冲突点：${topic.conflict_point}
 情绪钩子：${topic.emotion_hook}
 词根组合：${wordRoots ? JSON.stringify(wordRoots) : '未提供'}
 ${materials && materials.length > 0 ? `已上传素材：${materials.length}个` : '暂未上传素材'}
 
-请生成完整的逐镜脚本，时长${duration}秒。`,
-      },
-    ];
+请生成完整的逐镜脚本，时长${duration}秒。`;
 
-    const response = await client.invoke(messages, {
-      model: "doubao-seed-1-8-251228",
-      temperature: 0.7,
-    });
+    const fullPrompt = buildChatPrompt(getSystemPrompt(merchantTypeKey, materialAnalysis, duration), userPrompt);
+    const responseText = await callGemini(fullPrompt);
 
     // 解析LLM返回的JSON
     let scriptData;
     try {
-      const content = response.content;
+      const content = responseText;
       const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
                         content.match(/\{[\s\S]*\}/);
       const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
       scriptData = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error("JSON解析错误:", parseError);
-      scriptData = { rawContent: response.content };
+      scriptData = { rawContent: responseText };
     }
 
-    // 保存脚本到数据库
-    const supabaseClient = getSupabaseClient();
-    const { data: savedScript, error: saveError } = await supabaseClient
-      .from("scripts")
-      .insert({
-        project_id: projectId,
-        title: scriptData.title || topic.title,
-        duration: scriptData.duration || duration,
-        persona: scriptData.persona || MERCHANT_TYPE_CONFIG[merchantTypeKey]?.persona || "",
-        conflict: scriptData.conflict || topic.conflict_point,
-        emotion_line: scriptData.emotionLine || topic.emotion_hook,
-        opening_hook: scriptData.openingHook || {},
-        middle_content: scriptData.middleContent || [],
-        ending_guide: scriptData.endingGuide || {},
-        shot_list: scriptData.shotList || [],
-      })
-      .select()
-      .single();
-
-    if (saveError) {
-      console.error("保存脚本失败:", saveError);
-    }
+    // 保存脚本到数据库 - 已注释掉 Supabase
+    // const supabaseClient = getSupabaseClient();
+    // const { data: savedScript, error: saveError } = await supabaseClient
+    //   .from("scripts")
+    //   .insert({
+    //     project_id: projectId,
+    //     title: scriptData.title || topic.title,
+    //     duration: scriptData.duration || duration,
+    //     persona: scriptData.persona || MERCHANT_TYPE_CONFIG[merchantTypeKey]?.persona || "",
+    //     conflict: scriptData.conflict || topic.conflict_point,
+    //     emotion_line: scriptData.emotionLine || topic.emotion_hook,
+    //     opening_hook: scriptData.openingHook || {},
+    //     middle_content: scriptData.middleContent || [],
+    //     ending_guide: scriptData.endingGuide || {},
+    //     shot_list: scriptData.shotList || [],
+    //   })
+    //   .select()
+    //   .single();
+    // if (saveError) {
+    //   console.error("保存脚本失败:", saveError);
+    // }
+    console.log("[DB] 保存脚本:", { projectId, title: scriptData.title });
 
     return NextResponse.json({
       success: true,
-      script: savedScript || scriptData,
+      script: scriptData,
       materialAnalysis: materialAnalysis || [],
     });
   } catch (error) {
@@ -265,22 +258,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabaseClient = getSupabaseClient();
-    const { data, error } = await supabaseClient
-      .from("scripts")
-      .select("*")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error && error.code !== "PGRST116") {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    // const supabaseClient = getSupabaseClient();
+    // const { data, error } = await supabaseClient
+    //   .from("scripts")
+    //   .select("*")
+    //   .eq("project_id", projectId)
+    //   .order("created_at", { ascending: false })
+    //   .limit(1)
+    //   .single();
+    // if (error && error.code !== "PGRST116") {
+    //   return NextResponse.json({ error: error.message }, { status: 500 });
+    // }
+    // return NextResponse.json({
+    //   success: true,
+    //   script: data,
+    // });
+    console.log("[DB] 获取脚本:", { projectId });
     return NextResponse.json({
       success: true,
-      script: data,
+      script: null,
     });
   } catch (error) {
     return NextResponse.json(

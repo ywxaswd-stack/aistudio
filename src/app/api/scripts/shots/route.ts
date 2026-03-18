@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { LLMClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { callGemini, buildChatPrompt } from "@/lib/gemini";
+// import { getSupabaseClient } from "@/storage/database/supabase-client";
 
 /**
  * 分镜脚本生成API
@@ -92,10 +92,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const config = new Config();
-    const client = new LLMClient(config, customHeaders);
-
     // 构建用户输入
     const userInput = `
 ## 原始脚本信息
@@ -118,20 +114,13 @@ ${JSON.stringify(script.ending_guide, null, 2)}
 请将以上脚本按8秒一个片段拆分为分镜脚本，每个分镜需要有完整的画面描述、台词和Veo提示词。
 `;
 
-    const messages = [
-      { role: "system" as const, content: SHOT_SCRIPT_PROMPT },
-      { role: "user" as const, content: userInput },
-    ];
-
-    const response = await client.invoke(messages, {
-      model: "doubao-seed-1-8-251228",
-      temperature: 0.7,
-    });
+    const fullPrompt = buildChatPrompt(SHOT_SCRIPT_PROMPT, userInput);
+    const responseText = await callGemini(fullPrompt);
 
     // 解析LLM返回的JSON
     let shotScript;
     try {
-      const content = response.content;
+      const content = responseText;
       const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
                         content.match(/\{[\s\S]*\}/);
       const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
@@ -139,24 +128,24 @@ ${JSON.stringify(script.ending_guide, null, 2)}
     } catch (parseError) {
       console.error("JSON解析错误:", parseError);
       return NextResponse.json(
-        { error: "分镜脚本解析失败", rawContent: response.content },
+        { error: "分镜脚本解析失败", rawContent: responseText },
         { status: 500 }
       );
     }
 
-    // 保存到数据库
-    const supabaseClient = getSupabaseClient();
-    const { error: updateError } = await supabaseClient
-      .from("scripts")
-      .update({
-        shot_list: shotScript,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", script.id);
-
-    if (updateError) {
-      console.error("更新脚本失败:", updateError);
-    }
+    // 保存到数据库 - 已注释掉 Supabase
+    // const supabaseClient = getSupabaseClient();
+    // const { error: updateError } = await supabaseClient
+    //   .from("scripts")
+    //   .update({
+    //     shot_list: shotScript,
+    //     updated_at: new Date().toISOString(),
+    //   })
+    //   .eq("id", script.id);
+    // if (updateError) {
+    //   console.error("更新脚本失败:", updateError);
+    // }
+    console.log("[DB] 更新脚本分镜:", { scriptId: script.id, shotCount: shotScript.shots?.length });
 
     return NextResponse.json({
       success: true,
@@ -194,23 +183,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabaseClient = getSupabaseClient();
-    const { data, error } = await supabaseClient
-      .from("scripts")
-      .select("*")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    // const supabaseClient = getSupabaseClient();
+    // const { data, error } = await supabaseClient
+    //   .from("scripts")
+    //   .select("*")
+    //   .eq("project_id", projectId)
+    //   .order("created_at", { ascending: false })
+    //   .limit(1)
+    //   .single();
+    // if (error) {
+    //   return NextResponse.json({ error: error.message }, { status: 500 });
+    // }
+    // return NextResponse.json({
+    //   success: true,
+    //   script: data,
+    //   shotList: data?.shot_list || null,
+    // });
+    console.log("[DB] 获取分镜脚本:", { projectId });
     return NextResponse.json({
       success: true,
-      script: data,
-      shotList: data?.shot_list || null,
+      script: null,
+      shotList: null,
     });
   } catch (error) {
     return NextResponse.json(

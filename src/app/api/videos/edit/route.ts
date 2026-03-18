@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { S3Storage } from "coze-coding-dev-sdk";
+// import { getSupabaseClient } from "@/storage/database/supabase-client";
+// import { S3Storage } from "coze-coding-dev-sdk";
 
 interface VideoSegment {
   videoUrl: string;
@@ -26,25 +26,30 @@ export async function POST(request: NextRequest) {
     // 生成FFmpeg剪辑命令（前端可执行或后端使用fluent-ffmpeg处理）
     const ffmpegCommand = generateFFmpegCommand(videoSegments);
 
-    // 保存剪辑配置
-    const supabaseClient = getSupabaseClient();
-    const { data: editRecord, error } = await supabaseClient
-      .from("videos")
-      .insert({
-        project_id: projectId,
-        status: "editing",
-        duration: videoSegments.reduce((sum: number, seg: VideoSegment) => sum + seg.duration, 0),
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    // 保存剪辑配置 - 已注释掉 Supabase
+    // const supabaseClient = getSupabaseClient();
+    // const { data: editRecord, error } = await supabaseClient
+    //   .from("videos")
+    //   .insert({
+    //     project_id: projectId,
+    //     status: "editing",
+    //     duration: videoSegments.reduce((sum: number, seg: VideoSegment) => sum + seg.duration, 0),
+    //   })
+    //   .select()
+    //   .single();
+    // if (error) {
+    //   return NextResponse.json({ error: error.message }, { status: 500 });
+    // }
+    // return NextResponse.json({
+    //   success: true,
+    //   editId: editRecord.id,
+    //   ffmpegCommand,
+    //   message: "剪辑配置已生成，请在前端执行或使用后端处理",
+    // });
+    console.log("[DB] 保存剪辑配置:", { projectId, segmentsCount: videoSegments.length });
     return NextResponse.json({
       success: true,
-      editId: editRecord.id,
+      editId: "mock-edit-" + Date.now(),
       ffmpegCommand,
       message: "剪辑配置已生成，请在前端执行或使用后端处理",
     });
@@ -67,24 +72,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "缺少参数：projectId" }, { status: 400 });
     }
 
-    const supabaseClient = getSupabaseClient();
-    const { data: videos, error } = await supabaseClient
-      .from("videos")
-      .select("*")
-      .eq("project_id", projectId)
-      .eq("status", "completed");
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    // const supabaseClient = getSupabaseClient();
+    // const { data: videos, error } = await supabaseClient
+    //   .from("videos")
+    //   .select("*")
+    //   .eq("project_id", projectId)
+    //   .eq("status", "completed");
+    // if (error) {
+    //   return NextResponse.json({ error: error.message }, { status: 500 });
+    // }
     // 生成推荐剪辑方案
-    const editPlan = generateEditPlan(videos || []);
-
+    // const editPlan = generateEditPlan(videos || []);
+    // return NextResponse.json({
+    //   success: true,
+    //   videos,
+    //   editPlan,
+    // });
+    console.log("[DB] 获取剪辑配置:", { projectId });
     return NextResponse.json({
       success: true,
-      videos,
-      editPlan,
+      videos: [],
+      editPlan: generateEditPlan([]),
     });
   } catch (error) {
     return NextResponse.json(

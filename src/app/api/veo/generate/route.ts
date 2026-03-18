@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+// import { getSupabaseClient } from "@/storage/database/supabase-client";
 
 // Veo 配置
 const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT || "red-atlas-490409-v1";
@@ -290,14 +290,15 @@ export async function POST(request: NextRequest) {
         const data = JSON.parse(responseText);
         const operationName = data.name;
 
-        // 保存到数据库
-        const supabaseClient = getSupabaseClient();
-        await supabaseClient.from("videos").insert({
-          project_id: projectId,
-          status: "processing",
-          veo_operation_id: operationName,
-          duration: duration,
-        });
+        // 保存到数据库 - 已注释掉 Supabase
+        // const supabaseClient = getSupabaseClient();
+        // await supabaseClient.from("videos").insert({
+        //   project_id: projectId,
+        //   status: "processing",
+        //   veo_operation_id: operationName,
+        //   duration: duration,
+        // });
+        console.log("[DB] 保存视频任务:", { projectId, operationName, duration });
 
         results.push({
           shotIndex: i,
@@ -414,12 +415,13 @@ export async function GET(request: NextRequest) {
     // 优先使用 GCS URI
     const gcsUri = video.gcsUri;
     if (gcsUri) {
-      // 更新数据库
-      const supabaseClient = getSupabaseClient();
-      await supabaseClient
-        .from("videos")
-        .update({ status: "completed", video_url: gcsUri })
-        .eq("veo_operation_id", operationName);
+      // 更新数据库 - 已注释掉 Supabase
+      // const supabaseClient = getSupabaseClient();
+      // await supabaseClient
+      //   .from("videos")
+      //   .update({ status: "completed", video_url: gcsUri })
+      //   .eq("veo_operation_id", operationName);
+      console.log("[DB] 更新视频状态:", { operationName, gcsUri });
 
       return NextResponse.json({
         success: true,
@@ -436,12 +438,13 @@ export async function GET(request: NextRequest) {
         // 保存到本地 /tmp 目录
         const videoUrl = await saveBase64Video(base64Data);
 
-        // 更新数据库 - 保存本地 URL
-        const supabaseClient = getSupabaseClient();
-        await supabaseClient
-          .from("videos")
-          .update({ status: "completed", video_url: videoUrl })
-          .eq("veo_operation_id", operationName);
+        // 更新数据库 - 已注释掉 Supabase
+        // const supabaseClient = getSupabaseClient();
+        // await supabaseClient
+        //   .from("videos")
+        //   .update({ status: "completed", video_url: videoUrl })
+        //   .eq("veo_operation_id", operationName);
+        console.log("[DB] 更新视频状态(base64):", { operationName, videoUrl });
 
         return NextResponse.json({
           success: true,

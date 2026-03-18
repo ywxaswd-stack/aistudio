@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { VideoGenerationClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+// import { VideoGenerationClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
+// import { getSupabaseClient } from "@/storage/database/supabase-client";
 
 // 生成视频
 export async function POST(request: NextRequest) {
@@ -15,62 +15,69 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const config = new Config();
-    const client = new VideoGenerationClient(config, customHeaders);
+    // const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
+    // const config = new Config();
+    // const client = new VideoGenerationClient(config, customHeaders);
 
-    // 为每个分镜生成视频
-    const videoPromises = shots.map(async (shot: any, index: number) => {
-      const content = [{ type: "text" as const, text: shot.veoPrompt }];
+    // 为每个分镜生成视频 - 注释掉 Coze SDK 调用
+    const results: any[] = [];
+    for (let index = 0; index < shots.length; index++) {
+      const shot = shots[index];
+      // const content = [{ type: "text" as const, text: shot.veoPrompt }];
       
       try {
-        const response = await client.videoGeneration(content, {
-          model: "doubao-seedance-1-5-pro-251215",
-          duration: shot.duration || 5,
-          ratio: "16:9",
-          resolution: "720p",
-          generateAudio: true,
-        });
-
-        return {
+        // const response = await client.videoGeneration(content, {
+        //   model: "doubao-seedance-1-5-pro-251215",
+        //   duration: shot.duration || 5,
+        //   ratio: "16:9",
+        //   resolution: "720p",
+        //   generateAudio: true,
+        // });
+        // results.push({
+        //   shotIndex: index,
+        //   success: true,
+        //   videoUrl: response.videoUrl,
+        //   operationId: response.response.id,
+        // });
+        
+        // Mock 结果
+        results.push({
           shotIndex: index,
           success: true,
-          videoUrl: response.videoUrl,
-          operationId: response.response.id,
-        };
+          videoUrl: `/api/videos/mock-${Date.now()}-${index}.mp4`,
+          operationId: `mock-op-${Date.now()}-${index}`,
+        });
       } catch (error) {
-        return {
+        results.push({
           shotIndex: index,
           success: false,
           error: error instanceof Error ? error.message : "生成失败",
-        };
+        });
       }
-    });
-
-    const results = await Promise.all(videoPromises);
+    }
+    
     const successCount = results.filter((r) => r.success).length;
 
-    // 保存视频记录
-    const supabaseClient = getSupabaseClient();
-    const videoRecords = results
-      .filter((r) => r.success)
-      .map((r: any) => ({
-        project_id: projectId,
-        script_id: scriptId,
-        status: "completed",
-        veo_operation_id: r.operationId,
-        video_url: r.videoUrl,
-      }));
-
-    if (videoRecords.length > 0) {
-      await supabaseClient.from("videos").insert(videoRecords);
-    }
-
+    // 保存视频记录 - 已注释掉 Supabase
+    // const supabaseClient = getSupabaseClient();
+    // const videoRecords = results
+    //   .filter((r) => r.success)
+    //   .map((r: any) => ({
+    //     project_id: projectId,
+    //     script_id: scriptId,
+    //     status: "completed",
+    //     veo_operation_id: r.operationId,
+    //     video_url: r.videoUrl,
+    //   }));
+    // if (videoRecords.length > 0) {
+    //   await supabaseClient.from("videos").insert(videoRecords);
+    // }
     // 更新项目状态
-    await supabaseClient
-      .from("projects")
-      .update({ status: "video_generated", updated_at: new Date().toISOString() })
-      .eq("id", projectId);
+    // await supabaseClient
+    //   .from("projects")
+    //   .update({ status: "video_generated", updated_at: new Date().toISOString() })
+    //   .eq("id", projectId);
+    console.log("[DB] 保存视频记录:", { projectId, successCount, total: shots.length });
 
     return NextResponse.json({
       success: true,
@@ -96,18 +103,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "缺少参数：videoId" }, { status: 400 });
     }
 
-    const supabaseClient = getSupabaseClient();
-    const { data: video, error } = await supabaseClient
-      .from("videos")
-      .select("*")
-      .eq("id", videoId)
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, video });
+    // const supabaseClient = getSupabaseClient();
+    // const { data: video, error } = await supabaseClient
+    //   .from("videos")
+    //   .select("*")
+    //   .eq("id", videoId)
+    //   .single();
+    // if (error) {
+    //   return NextResponse.json({ error: error.message }, { status: 500 });
+    // }
+    // return NextResponse.json({ success: true, video });
+    console.log("[DB] 查询视频状态:", { videoId });
+    return NextResponse.json({ 
+      success: true, 
+      video: { id: videoId, status: "completed" } 
+    });
   } catch (error) {
     return NextResponse.json({ error: "查询视频状态失败" }, { status: 500 });
   }

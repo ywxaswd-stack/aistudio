@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { LLMClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { callGemini, buildChatPrompt } from "@/lib/gemini";
+// import { getSupabaseClient } from "@/storage/database/supabase-client";
 
 // 商户类型配置
 const MERCHANT_TYPE_CONFIG: Record<string, { 
@@ -199,15 +199,7 @@ export async function POST(request: NextRequest) {
       corePsychology: "通用心理"
     };
 
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const config = new Config();
-    const client = new LLMClient(config, customHeaders);
-
-    const messages = [
-      { role: "system" as const, content: SYSTEM_PROMPT },
-      {
-        role: "user" as const,
-        content: `## 任务：为用户生成词根组合推荐
+    const userPrompt = `## 任务：为用户生成词根组合推荐
 
 ### 输入信息
 - 行业：${industry}
@@ -236,19 +228,15 @@ ${Object.entries(ELEMENT_EMOTION_MAP).map(([k, v]) => `- ${k}：${v}`).join('\n'
 2. 再组合：生成3组词根组合，每组需标注冲突指数和冲突解析
 3. 时长${videoDuration <= 30 ? '较短（15-30秒），推荐更直接、冲击力强的词根组合' : '适中（30-60秒），可包含更多故事性元素'}
 4. 确保每组组合来自至少2个不同维度
-5. 优先推荐冲突指数高的组合`,
-      },
-    ];
+5. 优先推荐冲突指数高的组合`;
 
-    const response = await client.invoke(messages, {
-      model: "doubao-seed-1-8-251228",
-      temperature: 0.8,
-    });
+    const fullPrompt = buildChatPrompt(SYSTEM_PROMPT, userPrompt);
+    const responseText = await callGemini(fullPrompt);
 
     // 解析LLM返回的JSON
     let result;
     try {
-      const content = response.content;
+      const content = responseText;
       const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
                         content.match(/\{[\s\S]*\}/);
       const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
@@ -258,24 +246,22 @@ ${Object.entries(ELEMENT_EMOTION_MAP).map(([k, v]) => `- ${k}：${v}`).join('\n'
       result = { combinations: [], analysis: {} };
     }
 
-    // 保存词根组合到数据库
-    const supabaseClient = getSupabaseClient();
-    
-    if (result.combinations && result.combinations.length > 0) {
-      const wordRootsData = result.combinations.map((combo: any) => ({
-        project_id: projectId,
-        combination: combo,
-        is_selected: false,
-      }));
-
-      const { error: insertError } = await supabaseClient
-        .from("word_roots")
-        .insert(wordRootsData);
-
-      if (insertError) {
-        console.error("保存词根组合失败:", insertError);
-      }
-    }
+    // 保存词根组合到数据库 - 已注释掉 Supabase
+    // const supabaseClient = getSupabaseClient();
+    // if (result.combinations && result.combinations.length > 0) {
+    //   const wordRootsData = result.combinations.map((combo: any) => ({
+    //     project_id: projectId,
+    //     combination: combo,
+    //     is_selected: false,
+    //   }));
+    //   const { error: insertError } = await supabaseClient
+    //     .from("word_roots")
+    //     .insert(wordRootsData);
+    //   if (insertError) {
+    //     console.error("保存词根组合失败:", insertError);
+    //   }
+    // }
+    console.log("[DB] 保存词根组合:", { projectId, combinationsCount: result.combinations?.length || 0 });
 
     return NextResponse.json({
       success: true,
