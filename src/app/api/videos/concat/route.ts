@@ -1,76 +1,259 @@
 import { NextRequest, NextResponse } from "next/server";
+import { execSync, spawn } from "child_process";
+import { writeFileSync, existsSync, mkdirSync, unlinkSync } from "fs";
+import { join } from "path";
+
+const VIDEO_DIR = "/tmp/veo_videos";
 
 /**
- * 视频拼接合成API
+ * 视频合并 API
+ * POST /api/videos/merge
  * 
- * 功能：
- * 1. 接收多个视频URL
- * 2. 按顺序拼接成一个完整视频
- * 3. 返回合成后的视频URL
- * 
- * 注意：当前沙箱环境使用简单的URL列表返回
- * 生产环境需要接入真实的视频处理服务
+ * Body: {
+ *   videos: [
+ *     {
+ *       url: "/api/videos/xxx.mp4",  // 视频 URL
+ *       shotId: "S01",               // 分镜 ID
+ *       dialogue: "台词文字",         // 字幕文字（可选）
+ *       duration: 8,                 // 时长（秒）
+ *       transition: "fade"           // 转场效果：none/fade（可选）
+ *     }
+ *   ],
+ *   bgm: "upbeat",                   // 背景音乐风格（可选，暂时忽略）
+ *   addSubtitles: true,              // 是否添加字幕
+ *   aspectRatio: "16:9"             // 视频比例
+ * }
  */
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { videos, projectId } = body;
+    const { videos, addSubtitles = true, aspectRatio = "16:9" } = body;
 
     if (!videos || !Array.isArray(videos) || videos.length === 0) {
       return NextResponse.json(
-        { error: "缺少视频列表或列表为空" },
+        { success: false, error: "缺少视频列表" },
         { status: 400 }
       );
     }
 
-    console.log(`[视频合成] 收到 ${videos.length} 个视频片段`);
+    // 确保目录存在
+    if (!existsSync(VIDEO_DIR)) {
+      mkdirSync(VIDEO_DIR, { recursive: true });
+    }
 
-    // 过滤出有效的视频URL
-    const validVideos = videos.filter((v: any) => v.videoUrl && v.videoUrl.startsWith('http'));
-    
-    if (validVideos.length === 0) {
+    // 检查 FFmpeg 是否安装
+    try {
+      execSync("ffmpeg -version", { stdio: "ignore" });
+    } catch {
       return NextResponse.json(
-        { error: "没有有效的视频URL" },
-        { status: 400 }
+        { success: false, error: "服务器未安装 FFmpeg，请联系管理员" },
+        { status: 500 }
       );
     }
 
-    // 计算总时长
-    const totalDuration = validVideos.reduce((sum: number, v: any) => {
-      const duration = v.duration || 4;
-      return sum + duration;
-    }, 0);
+    // 把视频 URL 转成本地文件路径
+    const localPaths: string[] = [];
+    for (const video of videos) {
+      const url = video.url || "";
+      
+      if (url.startsWith("/api/videos/")) {
+        // 本地视频文件
+        const filename = url.replace("/api/videos/", "");
+        const filepath = join(VIDEO_DIR, filename);
+        if (!existsSync(filepath)) {
+          return NextResponse.json(
+            { success: false, error: `视频文件不存在: ${filename}` },
+            { status: 400 }
+          );
+        }
+        localPaths.push(filepath);
+      } else if (url.startsWith("gs://")) {
+        // GCS 上的视频，暂不支持
+        return NextResponse.json(
+          { success: false, error: "GCS 存储的视频暂不支持合并，请先下载到本地" },
+          { status: 400 }
+        );
+      } else {
+        return NextResponse.json(
+          { success: false, error: `不支持的视频地址格式: ${url}` },
+          { status: 400 }
+        );
+      }
+    }
 
-    // 在沙箱环境中，我们返回一个拼接后的信息
-    // 实际生产环境应该调用FFmpeg或其他视频处理服务
-    const concatResult = {
+    const timestamp = Date.now();
+    const outputFilename = `merged_${timestamp}.mp4`;
+    const outputPath = join(VIDEO_DIR, outputFilename);
+
+    // ============================================================
+    // 方案一：简单拼接（不加字幕）
+    // ============================================================
+    if (!addSubtitles) {
+      // 生成 filelist.txt
+      const filelistPath = join(VIDEO_DIR, `filelist_${timestamp}.txt`);
+      const filelistContent = localPaths
+        .map(p => `file '${p}'`)
+        .join("\n");
+      writeFileSync(filelistPath, filelistContent);
+
+      try {
+        execSync(
+          `ffmpeg -f concat -safe 0 -i "${filelistPath}" -c copy "${outputPath}" -y`,
+          { timeout: 120000 }
+        );
+        unlinkSync(filelistPath);
+      } catch (err) {
+        try { unlinkSync(filelistPath); } catch {}
+        console.error("FFmpeg 拼接失败:", err);
+        return NextResponse.json(
+          { success: false, error: "视频拼接失败: " + String(err) },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        video_url: `/api/videos/${outputFilename}`,
+        message: "视频合并完成",
+        totalVideos: videos.length,
+      });
+    }
+
+    // ============================================================
+    // 方案二：拼接 + 添加字幕
+    // ============================================================
+
+    // 第一步：先把所有视频拼接成一个临时文件
+    const tempMergedPath = join(VIDEO_DIR, `temp_merged_${timestamp}.mp4`);
+    const filelistPath = join(VIDEO_DIR, `filelist_${timestamp}.txt`);
+    const filelistContent = localPaths
+      .map(p => `file '${p}'`)
+      .join("\n");
+    writeFileSync(filelistPath, filelistContent);
+
+    try {
+      execSync(
+        `ffmpeg -f concat -safe 0 -i "${filelistPath}" -c copy "${tempMergedPath}" -y`,
+        { timeout: 120000 }
+      );
+      unlinkSync(filelistPath);
+    } catch (err) {
+      try { unlinkSync(filelistPath); } catch {}
+      return NextResponse.json(
+        { success: false, error: "视频拼接失败: " + String(err) },
+        { status: 500 }
+      );
+    }
+
+    // 第二步：计算每段视频的字幕时间轴
+    // 根据每个视频的 duration 计算开始和结束时间
+    const subtitleEntries: string[] = [];
+    let currentTime = 0;
+
+    for (let i = 0; i < videos.length; i++) {
+      const video = videos[i];
+      const duration = video.duration || 8;
+      const dialogue = video.dialogue || "";
+
+      if (dialogue && dialogue.trim()) {
+        // 字幕从该片段开始0.5秒后显示，到结束前0.5秒消失
+        const startTime = currentTime + 0.5;
+        const endTime = currentTime + duration - 0.5;
+        
+        // 转义单引号（FFmpeg drawtext 需要）
+        const escapedText = dialogue
+          .replace(/'/g, "\\'")
+          .replace(/:/g, "\\:")
+          .replace(/\[/g, "\\[")
+          .replace(/\]/g, "\\]");
+
+        subtitleEntries.push(
+          `drawtext=text='${escapedText}':` +
+          `fontsize=28:` +
+          `fontcolor=white:` +
+          `bordercolor=black:` +
+          `borderw=2:` +
+          `x=(w-text_w)/2:` +
+          `y=h-th-40:` +
+          `enable='between(t,${startTime.toFixed(2)},${endTime.toFixed(2)})'`
+        );
+      }
+
+      currentTime += duration;
+    }
+
+    // 第三步：如果有字幕，叠加字幕；否则直接用临时文件
+    if (subtitleEntries.length > 0) {
+      const filterComplex = subtitleEntries.join(",");
+      
+      try {
+        execSync(
+          `ffmpeg -i "${tempMergedPath}" -vf "${filterComplex}" -codec:a copy "${outputPath}" -y`,
+          { timeout: 180000 }
+        );
+        // 删除临时文件
+        try { unlinkSync(tempMergedPath); } catch {}
+      } catch (err) {
+        try { unlinkSync(tempMergedPath); } catch {}
+        console.error("字幕叠加失败:", err);
+        // 字幕失败就用无字幕版本
+        try {
+          execSync(`mv "${tempMergedPath}" "${outputPath}"`);
+        } catch {}
+        return NextResponse.json({
+          success: true,
+          video_url: `/api/videos/${outputFilename}`,
+          message: "视频合并完成（字幕添加失败，已输出无字幕版本）",
+          totalVideos: videos.length,
+          subtitleFailed: true,
+        });
+      }
+    } else {
+      // 没有字幕，直接重命名临时文件
+      try {
+        execSync(`mv "${tempMergedPath}" "${outputPath}"`);
+      } catch (err) {
+        return NextResponse.json(
+          { success: false, error: "文件处理失败" },
+          { status: 500 }
+        );
+      }
+    }
+
+    return NextResponse.json({
       success: true,
-      projectId,
-      totalVideos: validVideos.length,
-      totalDuration,
-      videos: validVideos.map((v: any, index: number) => ({
-        index: index + 1,
-        url: v.videoUrl,
-        duration: v.duration || 4,
-        shotId: v.shotId
-      })),
-      // 合成视频的播放列表（用于前端连续播放）
-      playlistUrl: validVideos.map((v: any) => v.videoUrl).join(','),
-      // 模拟合成后的视频URL（生产环境应该返回真实的合成视频）
-      mergedVideoUrl: null,
-      message: `成功准备 ${validVideos.length} 个视频片段，总时长 ${totalDuration} 秒`
-    };
-
-    console.log(`[视频合成] 完成，总时长: ${totalDuration}秒`);
-
-    return NextResponse.json(concatResult);
+      video_url: `/api/videos/${outputFilename}`,
+      message: `视频合并完成，共 ${videos.length} 个片段${subtitleEntries.length > 0 ? `，已添加 ${subtitleEntries.length} 条字幕` : ""}`,
+      totalVideos: videos.length,
+      subtitleCount: subtitleEntries.length,
+      totalDuration: videos.reduce((sum: number, v: any) => sum + (v.duration || 8), 0),
+    });
 
   } catch (error) {
-    console.error("[视频合成] 失败:", error);
+    console.error("视频合并异常:", error);
     return NextResponse.json(
-      { error: "视频合成失败: " + (error instanceof Error ? error.message : String(error)) },
+      { success: false, error: String(error) },
       { status: 500 }
     );
   }
+}
+
+/**
+ * 查询合并状态（预留，当前同步处理）
+ */
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const filename = searchParams.get("filename");
+  
+  if (!filename) {
+    return NextResponse.json({ error: "缺少 filename 参数" }, { status: 400 });
+  }
+  
+  const filepath = join(VIDEO_DIR, filename);
+  const exists = existsSync(filepath);
+  
+  return NextResponse.json({
+    exists,
+    video_url: exists ? `/api/videos/${filename}` : null,
+  });
 }
