@@ -247,6 +247,9 @@ export default function Home() {
           videoDuration: videoDuration,
         };
         setIndustryAnalysis(analysisWithMeta);
+        
+        // 先显示加载提示，再跳转到步骤2
+        setGeneratingWordRoots(true);
         setCurrentStepWithTrack(2);
         toast.success("赛道分析完成！");
         
@@ -264,7 +267,7 @@ export default function Home() {
 
   // 生成词根组合
   const generateWordRoots = async (projectId: string, analysis: any) => {
-    setGeneratingWordRoots(true);
+    // 加载提示已在 analyzeIndustry 中提前设置
     const actualIndustry = getActualIndustry();
     try {
       const res = await fetch("/api/word-roots/generate", {
@@ -523,7 +526,8 @@ export default function Home() {
       
       if (data.success) {
         setShotScript(data.shotScript);
-        // 保持在步骤5让用户确认分镜，不自动跳转
+        // 生成分镜脚本后自动跳转到步骤5让用户查看和确认
+        setCurrentStepWithTrack(5);
         toast.success(`分镜脚本生成完成！共 ${data.shotScript.shotCount} 个分镜，请查看确认`);
       } else {
         toast.error(data.error || "分镜脚本生成失败");

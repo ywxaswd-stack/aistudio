@@ -208,6 +208,21 @@ ${materials && materials.length > 0 ? `已上传素材：${materials.length}个`
       scriptData = { rawContent: responseText };
     }
 
+    // 统一字段名为前端期望的下划线格式
+    const formattedScript = {
+      id: `script_${Date.now()}`,
+      title: scriptData.title || topic.title,
+      duration: scriptData.duration || duration,
+      persona: scriptData.persona || MERCHANT_TYPE_CONFIG[merchantTypeKey]?.persona || "",
+      conflict: scriptData.conflict || topic.conflict_point,
+      emotion_line: scriptData.emotionLine || topic.emotion_hook,
+      opening_hook: scriptData.openingHook || {},
+      middle_content: scriptData.middleContent || [],
+      ending_guide: scriptData.endingGuide || {},
+      shot_list: scriptData.shotList || [],
+      materialUsagePlan: scriptData.materialUsagePlan || "",
+    };
+
     // 保存脚本到数据库 - 已注释掉 Supabase
     // const supabaseClient = getSupabaseClient();
     // const { data: savedScript, error: saveError } = await supabaseClient
@@ -229,11 +244,11 @@ ${materials && materials.length > 0 ? `已上传素材：${materials.length}个`
     // if (saveError) {
     //   console.error("保存脚本失败:", saveError);
     // }
-    console.log("[DB] 保存脚本:", { projectId, title: scriptData.title });
+    console.log("[DB] 保存脚本:", { projectId, title: formattedScript.title });
 
     return NextResponse.json({
       success: true,
-      script: scriptData,
+      script: formattedScript,
       materialAnalysis: materialAnalysis || [],
     });
   } catch (error) {
