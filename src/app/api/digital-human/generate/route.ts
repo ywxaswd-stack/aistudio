@@ -159,21 +159,28 @@ async function callVolcengineAPI(
 }
 
 /**
- * 调用 TTS 生成音频
+ * 调用 TTS 生成音频（火山引擎语音合成）
+ * 注意：火山引擎 TTS 的 Authorization 格式是 "Bearer;{token}"（无空格）
  */
 async function generateTTS(
   script: string,
   voiceStyle: string
 ): Promise<{ audioUrl: string; duration: number }> {
+  const appId = process.env.VOLCENGINE_TTS_APP_ID || "";
+  const token = process.env.VOLCENGINE_TTS_TOKEN || "";
   const voiceType = VOICE_TYPES[voiceStyle] || VOICE_TYPES.female_gentle;
+
+  if (!appId || !token) {
+    throw new Error("TTS配置缺失：请设置 VOLCENGINE_TTS_APP_ID 和 VOLCENGINE_TTS_TOKEN");
+  }
 
   const ttsPayload = {
     app: {
-      appid: process.env.VOLCENGINE_TTS_APP_ID || "",
-      token: process.env.VOLCENGINE_TTS_TOKEN || "",
+      appid: appId,
+      token: token,
       cluster: "volcano_tts",
     },
-    user: { uid: "digital_human_user" },
+    user: { uid: "user_001" },
     audio: {
       voice_type: voiceType,
       encoding: "mp3",
@@ -190,17 +197,20 @@ async function generateTTS(
     },
   };
 
+  console.log("[TTS] 调用火山引擎TTS API...");
   const ttsResponse = await fetch("https://openspeech.bytedance.com/api/v1/tts", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer; ${process.env.VOLCENGINE_TTS_TOKEN || ""}`,
+      // 火山引擎 TTS 认证格式：Bearer;{token}（注意无空格）
+      Authorization: `Bearer;${token}`,
     },
     body: JSON.stringify(ttsPayload),
   });
 
   if (!ttsResponse.ok) {
-    throw new Error(`TTS API调用失败: ${ttsResponse.status}`);
+    const errText = await ttsResponse.text();
+    throw new Error(`TTS失败: ${ttsResponse.status} - ${errText}`);
   }
 
   const ttsData = await ttsResponse.json();
@@ -209,9 +219,24 @@ async function generateTTS(
     throw new Error(`TTS合成失败: ${ttsData.message || ttsData.code}`);
   }
 
-  // 保存音频到临时存储（实际应上传到对象存储）
-  // 这里返回 base64 数据 URL
-  const audioUrl = `data:audio/mp3;base64,${ttsData.data}`;
+  // 将 base64 音频保存到本地文件
+  const fs = await import("fs");
+  const path = await import("path");
+  
+  const audioDir = "/tmp/veo_audio";
+  if (!fs.existsSync(audioDir)) {
+    fs.mkdirSync(audioDir, { recursive: true });
+  }
+  
+  const filename = `tts_${Date.now()}.mp3`;
+  const filepath = path.join(audioDir, filename);
+  const audioBuffer = Buffer.from(ttsData.data, "base64");
+  fs.writeFileSync(filepath, audioBuffer);
+  
+  console.log(`[TTS] 音频已保存: ${filepath}, 大小: ${audioBuffer.length} bytes`);
+  
+  // 返回本地文件路径（后续需要上传到对象存储获取公网URL）
+  const audioUrl = filepath;
   const duration = Math.ceil(script.length / 4.5); // 预估时长
 
   return { audioUrl, duration };
