@@ -64,17 +64,24 @@ interface Script {
   ending_guide: any;
   shot_list: any[];
   materialUsagePlan?: string;
+  // 新增口播脚本字段
+  script?: string;
+  wordCount?: number;
+  targetWordCount?: { min: number; max: number };
+  estimatedDuration?: number;
+  openingHook?: string;
+  mainContent?: string;
+  closingCTA?: string;
+  usedHooks?: string[];
 }
 
 const STEPS = [
-  { id: 1, title: "场景设定", icon: Target, description: "选择使用场景和时长" },
-  { id: 2, title: "爆款词根", icon: Sparkles, description: "生成词根组合推荐" },
-  { id: 3, title: "爆款选题", icon: Lightbulb, description: "生成爆款选题方案" },
-  { id: 4, title: "脚本生成", icon: FileText, description: "生成基础脚本" },
-  { id: 5, title: "分镜脚本", icon: Film, description: "按8秒拆分分镜" },
-  { id: 6, title: "素材上传", icon: Upload, description: "根据分镜上传素材" },
-  { id: 7, title: "视频生成", icon: Video, description: "Veo生成视频片段" },
-  { id: 8, title: "剪辑合成", icon: Play, description: "剪辑合成最终视频" },
+  { id: 1, title: "场景设定", icon: Target, description: "选择商户类型、行业和时长" },
+  { id: 2, title: "脚本类型", icon: FileText, description: "选择口播脚本类型" },
+  { id: 3, title: "爆款元素", icon: Sparkles, description: "选择爆款元素组合" },
+  { id: 4, title: "爆款选题", icon: Lightbulb, description: "生成8个爆款选题" },
+  { id: 5, title: "口播脚本", icon: FileText, description: "生成口播文案" },
+  { id: 6, title: "数字人生成", icon: Video, description: "生成口播数字人视频" },
 ];
 
 // 维度一：商户类型配置
@@ -138,6 +145,164 @@ const INDUSTRIES = [
   "汽车", "财经", "法律", "摄影", "旅行", "游戏"
 ];
 
+// 脚本类型（步骤2选择）
+const SCRIPT_TYPES = [
+  {
+    id: "teach",
+    title: "教知识",
+    icon: "📚",
+    description: "问题→解决方案→效果",
+    structure: "先抛出痛点，再给出方法，最后展示效果",
+    example: "3个Excel技巧让你效率翻倍"
+  },
+  {
+    id: "show",
+    title: "晒过程",
+    icon: "🎬",
+    description: "场景→过程→结果",
+    structure: "展示真实场景，记录操作过程，呈现最终结果",
+    example: "带你看我的一天是怎么过的"
+  },
+  {
+    id: "opinion",
+    title: "聊观点",
+    icon: "💬",
+    description: "现象→观点→共鸣",
+    structure: "描述社会现象，表达鲜明观点，引发情感共鸣",
+    example: "为什么年轻人越来越不想结婚了？"
+  },
+  {
+    id: "story",
+    title: "讲故事",
+    icon: "📖",
+    description: "冲突→转折→结局",
+    structure: "设置戏剧冲突，制造意外转折，给出圆满结局",
+    example: "我被客户骂了3小时，结果反转了"
+  }
+];
+
+// 8大爆款元素（步骤3选择）
+const VIRAL_ELEMENTS = [
+  {
+    id: "cost",
+    title: "成本维度",
+    icon: "💰",
+    coreLogic: "花小钱办大事，满足性价比心理",
+    hooks: ["花小钱装大杯", "省时省钱省力", "平替", "白嫖", "一招搞定", "9.9元"],
+    example: "9.9元改造出租屋"
+  },
+  {
+    id: "crowd",
+    title: "人群维度",
+    icon: "👥",
+    coreLogic: "锁定特定群体，引发共情归属",
+    hooks: ["宝妈", "程序员", "打工人", "小个子", "巨蟹座", "处女座"],
+    example: "宝妈必看的3个带娃神器"
+  },
+  {
+    id: "curiosity",
+    title: "猎奇维度",
+    icon: "🔍",
+    coreLogic: "反常识冷知识，打破认知惯性",
+    hooks: ["反常识", "万万没想到", "揭秘", "黑科技", "冷知识", "据说"],
+    example: "在葡萄上做医美？"
+  },
+  {
+    id: "contrast",
+    title: "反差维度",
+    icon: "⚡",
+    coreLogic: "制造戏剧冲突，产生记忆点",
+    hooks: ["身份错位", "场景反差", "没想到你是这样的", "居然", "竟然"],
+    example: "在菜市场卖奢侈品"
+  },
+  {
+    id: "worst",
+    title: "最差元素",
+    icon: "👎",
+    coreLogic: "利用负面情绪，引发讨论吐槽",
+    hooks: ["最丢脸", "最没面子", "避坑", "千万别买", "全网最低分"],
+    example: "大众点评评分最差的店，到底有多难吃？"
+  },
+  {
+    id: "authority",
+    title: "头牌效应",
+    icon: "👑",
+    coreLogic: "借势名人权威，建立信任认知",
+    hooks: ["明星同款", "大佬揭秘", "爱马仕工艺", "CCTV报道", "首富思维"],
+    example: "揭秘爱马仕的百年工艺"
+  },
+  {
+    id: "nostalgia",
+    title: "怀旧元素",
+    icon: "📼",
+    coreLogic: "激活集体记忆，触发情感共鸣",
+    hooks: ["童年回忆", "20年前", "小时候", "老味道", "经典复刻", "爷青回"],
+    example: "复刻小学门口的5毛钱零食"
+  },
+  {
+    id: "hormone",
+    title: "荷尔蒙驱动",
+    icon: "💕",
+    coreLogic: "满足情感好奇，驱动社交话题",
+    hooks: ["找对象", "脱单", "渣男鉴别", "分手", "前任", "夫妻关系"],
+    example: "找对象时，如何一眼识别PUA？"
+  }
+];
+
+// 动作风格（步骤6选择）
+const MOTION_STYLES = [
+  {
+    id: "enthusiastic",
+    title: "热情推荐",
+    icon: "🎉",
+    description: "自信走向镜头，举手展示产品，充满活力",
+    prompt: "Enthusiastically walking towards camera, raising hand to show product, energetic smile"
+  },
+  {
+    id: "professional",
+    title: "专业讲解",
+    icon: "👔",
+    description: "保持稳定姿态，手势配合讲解，专注认真",
+    prompt: "Stable posture, hand gestures for explanation, focused and serious expression"
+  },
+  {
+    id: "friendly",
+    title: "亲切聊天",
+    icon: "😊",
+    description: "自然放松肢体，轻微点头，亲切微笑",
+    prompt: "Natural relaxed body language, slight nodding, friendly smile"
+  },
+  {
+    id: "surprise",
+    title: "惊喜揭秘",
+    icon: "😲",
+    description: "夸张惊讶表情，配合快速手势，制造悬念",
+    prompt: "Exaggerated surprised expression, quick hand gestures, creating suspense"
+  },
+  {
+    id: "authoritative",
+    title: "权威背书",
+    icon: "🏛️",
+    description: "挺拔自信站姿，稳重手势，严肃专业",
+    prompt: "Confident upright posture, steady gestures, serious and professional expression"
+  }
+];
+
+// 声音风格选项
+const VOICE_STYLES = [
+  { id: "female_gentle", title: "温柔女声", voiceType: "BV700_V2_streaming" },
+  { id: "female_energetic", title: "活力女声", voiceType: "BV700_V3_streaming" },
+  { id: "male_calm", title: "沉稳男声", voiceType: "BV406_V2_streaming" },
+  { id: "male_professional", title: "专业男声", voiceType: "BV407_V2_streaming" }
+];
+
+// 时长对应字数
+const DURATION_WORD_COUNT: Record<number, { min: number; max: number }> = {
+  15: { min: 55, max: 75 },
+  30: { min: 110, max: 140 },
+  45: { min: 170, max: 210 }
+};
+
 export default function Home() {
   const [currentStep, setCurrentStep] = useState(1);
   const [project, setProject] = useState<Project | null>(null);
@@ -150,6 +315,16 @@ export default function Home() {
   const [customIndustry, setCustomIndustry] = useState<string>("");
   // 视频时长
   const [videoDuration, setVideoDuration] = useState<number>(30);
+  
+  // 新流程状态
+  const [scriptType, setScriptType] = useState<string | null>(null); // 脚本类型
+  const [selectedElements, setSelectedElements] = useState<string[]>([]); // 选中的爆款元素
+  const [portraitImage, setPortraitImage] = useState<string | null>(null); // 人像图片
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(null); // 背景图片
+  const [motionStyle, setMotionStyle] = useState<string>("friendly"); // 动作风格
+  const [voiceStyle, setVoiceStyle] = useState<string>("female_gentle"); // 声音风格
+  const [digitalHumanTaskId, setDigitalHumanTaskId] = useState<string | null>(null); // 数字人任务ID
+  const [digitalHumanVideo, setDigitalHumanVideo] = useState<string | null>(null); // 生成的数字人视频
   
   // 各步骤数据
   const [industryAnalysis, setIndustryAnalysis] = useState<any>(null);
@@ -346,6 +521,59 @@ export default function Home() {
   };
 
   // 换一批选题
+  // 生成口播脚本
+  const generateScript = async () => {
+    if (!project || !topics.some((t: any) => t.is_selected)) return;
+    
+    setLoading(true);
+    try {
+      const selectedTopic = topics.find((t: any) => t.is_selected);
+      const res = await fetch("/api/scripts/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project.id,
+          topic: selectedTopic,
+          duration: videoDuration,
+          scriptType: scriptType,
+          viralElements: selectedElements
+        }),
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setScript(data.script);
+        toast.success("脚本生成成功！");
+      }
+    } catch (error) {
+      toast.error("生成脚本失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 轮询数字人视频状态
+  const pollDigitalHumanStatus = async (taskId: string) => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/digital-human/status?taskId=${taskId}`);
+        const data = await res.json();
+        
+        if (data.status === "completed" && data.videoUrl) {
+          clearInterval(pollInterval);
+          setDigitalHumanVideo(data.videoUrl);
+          toast.success("数字人视频生成完成！");
+        } else if (data.status === "failed") {
+          clearInterval(pollInterval);
+          toast.error("数字人视频生成失败");
+        }
+      } catch (error) {
+        clearInterval(pollInterval);
+        toast.error("查询状态失败");
+      }
+    }, 5000);
+  };
+
   const refreshTopics = async () => {
     if (!project) return;
     const selected = wordRoots.find(wr => wr.is_selected);
@@ -373,6 +601,37 @@ export default function Home() {
       }
     } catch (error) {
       toast.error("重新生成失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 旧的生成选题函数（保留兼容）
+  const generateTopics = async () => {
+    if (!project || selectedElements.length === 0) return;
+    
+    setLoading(true);
+    try {
+      const res = await fetch("/api/topics/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project.id,
+          industry: getActualIndustry(),
+          viralElements: selectedElements,
+          merchantType: selectedMerchantType,
+          videoDuration: videoDuration,
+          count: 8
+        }),
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setTopics(data.topics);
+        toast.success("已生成8个爆款选题！");
+      }
+    } catch (error) {
+      toast.error("生成选题失败");
     } finally {
       setLoading(false);
     }
@@ -456,10 +715,10 @@ export default function Home() {
     }
   };
 
-  // 生成脚本
+  // 生成脚本（旧版本，保留分镜脚本生成）
   const [materialAnalysis, setMaterialAnalysis] = useState<any[]>([]);
   
-  const generateScript = async () => {
+  const generateScriptWithMaterials = async () => {
     if (!project) return;
     const selectedTopic = topics.find(t => t.is_selected);
     const selectedWordRoot = wordRoots.find(wr => wr.is_selected);
@@ -1071,175 +1330,166 @@ export default function Home() {
             </div>
           )}
 
-          {/* 步骤2: 爆款词根 */}
+          {/* 步骤2: 脚本类型选择 */}
           {currentStep === 2 && (
             <div className="space-y-6">
-              {/* 词根生成中全局加载提示 */}
-              {generatingWordRoots && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-                  <div className="bg-white dark:bg-gray-900 rounded-xl p-8 flex flex-col items-center gap-4 shadow-2xl">
-                    <div className="relative">
-                      <Loader2 className="w-12 h-12 text-purple-600 animate-spin" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Sparkles className="w-5 h-5 text-purple-400" />
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">正在分析行业词根...</h3>
-                      <p className="text-sm text-gray-500 mt-1">AI正在根据商户类型和行业特征生成高冲突指数的词根组合</p>
-                    </div>
-                    <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 animate-pulse w-full" />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 词根分析过程 */}
-              {wordRootAnalysis && (
-                <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <span className="text-blue-600">🧠</span> 词根组合分析过程
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* 行业心理分析 */}
-                    <div className="p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg">
-                      <h4 className="font-medium text-sm text-gray-500 mb-1">行业用户心理</h4>
-                      <p className="text-sm">{wordRootAnalysis.industryPsychology || "分析中..."}</p>
-                    </div>
-                    
-                    {/* 过滤后的词根 */}
-                    <div className="p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg">
-                      <h4 className="font-medium text-sm text-gray-500 mb-2">商户类型过滤后的高权重词根</h4>
-                      <div className="flex gap-2 flex-wrap">
-                        {(wordRootAnalysis.filteredElements || []).map((elem: string, i: number) => (
-                          <Badge key={i} variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-800 dark:text-purple-200">
-                            {elem}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* 过滤理由 */}
-                    {wordRootAnalysis.filterReason && (
-                      <div className="p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg">
-                        <h4 className="font-medium text-sm text-gray-500 mb-1">过滤理由</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{wordRootAnalysis.filterReason}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* 词根组合推荐 */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-purple-600" />
-                    第2步：选择词根组合
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    第2步：选择脚本类型
                   </CardTitle>
                   <CardDescription>
-                    基于分析结果，为你推荐3组高冲突指数的词根组合
+                    选择你想要的内容结构，AI会根据类型生成对应的口播脚本
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {wordRoots.map((wr, index) => (
-                    <div
-                      key={wr.id}
-                      onClick={() => selectWordRoot(wr.id)}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all relative ${
-                        wr.is_selected
-                          ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
-                          : "border-gray-200 hover:border-purple-300"
-                      } ${generatingTopicForWordRoot === wr.id ? 'opacity-75 pointer-events-none' : ''}`}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {SCRIPT_TYPES.map((type) => (
+                      <div
+                        key={type.id}
+                        onClick={() => setScriptType(type.id)}
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          scriptType === type.id
+                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
+                            : "border-gray-200 hover:border-purple-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-2xl">{type.icon}</span>
+                          <span className="text-lg font-semibold">{type.title}</span>
+                          {scriptType === type.id && <CheckCircle2 className="w-5 h-5 text-purple-600 ml-auto" />}
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{type.description}</p>
+                        <div className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 p-2 rounded">
+                          结构：{type.structure}
+                        </div>
+                        <div className="mt-2 text-xs text-purple-600">
+                          示例：{type.example}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                    <Button variant="outline" onClick={() => setCurrentStepWithTrack(1)} className="flex-1">
+                      <ChevronLeft className="w-4 h-4 mr-2" />
+                      返回场景设定
+                    </Button>
+                    <Button 
+                      onClick={() => setCurrentStepWithTrack(3)} 
+                      disabled={!scriptType}
+                      className="flex-1"
                     >
-                      {/* 生成中遮罩 */}
-                      {generatingTopicForWordRoot === wr.id && (
-                        <div className="absolute inset-0 bg-white/60 dark:bg-black/40 rounded-lg flex items-center justify-center z-10">
-                          <div className="flex items-center gap-2 text-purple-600">
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <span className="text-sm font-medium">正在生成选题...</span>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold text-purple-600">组合 {index + 1}</span>
-                          {wr.combination.conflictIndex && (
-                            <Badge variant={wr.combination.conflictIndex === '高' ? 'default' : 'secondary'} 
-                                   className={wr.combination.conflictIndex === '高' ? 'bg-green-500' : ''}>
-                              冲突指数：{wr.combination.conflictIndex}
-                            </Badge>
-                          )}
-                        </div>
-                        {wr.is_selected && <CheckCircle2 className="w-5 h-5 text-purple-600" />}
-                      </div>
-                      
-                      {/* 词根标签 */}
-                      <div className="flex gap-2 flex-wrap mb-3">
-                        {wr.combination.elements.map((elem: string, i: number) => (
-                          <Badge key={i} variant="outline" className="text-sm py-1 px-3">
-                            {elem}
-                          </Badge>
-                        ))}
-                      </div>
-                      
-                      {/* 冲突分析 */}
-                      {wr.combination.conflictAnalysis && (
-                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm mb-2">
-                          <span className="text-blue-600 font-medium">冲突解析：</span>
-                          <span className="text-gray-600 dark:text-gray-400 ml-1">{wr.combination.conflictAnalysis}</span>
-                        </div>
-                      )}
-                      
-                      {/* 推荐理由 */}
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        {wr.combination.description}
-                      </p>
-                      
-                      {/* 示例标题 */}
-                      <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                        <span className="text-xs text-gray-500">示例标题：</span>
-                        <span className="text-sm font-medium ml-1">{wr.combination.example}</span>
-                      </div>
-                    </div>
-                  ))}
+                      下一步：选择爆款元素
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
           )}
 
-          {/* 步骤3: 爆款选题 */}
+          {/* 步骤3: 爆款元素选择 */}
           {currentStep === 3 && (
-            <div className="space-y-6 relative">
-              {/* 生成脚本的全局loading */}
-              {generatingScript && (
-                <div className="absolute inset-0 bg-white/80 dark:bg-black/60 z-50 flex items-center justify-center rounded-lg">
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
-                    <span className="text-purple-600 font-medium">正在生成脚本...</span>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-600" />
+                    第3步：选择爆款元素
+                  </CardTitle>
+                  <CardDescription>
+                    选择1-3个爆款元素，系统会自动使用对应的钩子词根生成吸睛内容
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {VIRAL_ELEMENTS.map((element) => (
+                      <div
+                        key={element.id}
+                        onClick={() => {
+                          if (selectedElements.includes(element.id)) {
+                            setSelectedElements(selectedElements.filter(e => e !== element.id));
+                          } else if (selectedElements.length < 3) {
+                            setSelectedElements([...selectedElements, element.id]);
+                          }
+                        }}
+                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          selectedElements.includes(element.id)
+                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
+                            : "border-gray-200 hover:border-purple-300"
+                        } ${selectedElements.length >= 3 && !selectedElements.includes(element.id) ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xl">{element.icon}</span>
+                          <span className="font-semibold text-sm">{element.title}</span>
+                          {selectedElements.includes(element.id) && <CheckCircle2 className="w-4 h-4 text-purple-600 ml-auto" />}
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">{element.coreLogic}</p>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {element.hooks.slice(0, 3).map((hook, i) => (
+                            <Badge key={i} variant="secondary" className="text-xs">{hook}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              )}
-              
+
+                  {selectedElements.length > 0 && (
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <p className="text-sm text-green-700">
+                        已选择 {selectedElements.length} 个元素，将使用以下钩子词根：
+                      </p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {selectedElements.map(el => 
+                          VIRAL_ELEMENTS.find(e => e.id === el)?.hooks.map((hook, i) => (
+                            <Badge key={`${el}-${i}`} variant="outline" className="text-xs">{hook}</Badge>
+                          ))
+                        ).flat()}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 mt-6">
+                    <Button variant="outline" onClick={() => setCurrentStepWithTrack(2)} className="flex-1">
+                      <ChevronLeft className="w-4 h-4 mr-2" />
+                      返回脚本类型
+                    </Button>
+                    <Button 
+                      onClick={() => setCurrentStepWithTrack(4)} 
+                      disabled={selectedElements.length === 0}
+                      className="flex-1"
+                    >
+                      下一步：生成选题
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* 步骤4: 爆款选题 */}
+          {currentStep === 4 && (
+            <div className="space-y-6 relative">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Lightbulb className="w-5 h-5 text-purple-600" />
-                    第3步：选择爆款选题
+                    第4步：选择爆款选题
                   </CardTitle>
                   <CardDescription>
-                    每个选题包含7种不同风格的标题变体，点击展开查看详情
+                    基于你选择的爆款元素，AI为你生成8个爆款选题
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-sm">
-                      💡 提示：每个选题的主标题是综合7种风格的最佳选择
-                    </Badge>
+                    <div className="text-sm text-gray-500">
+                      已选元素：{selectedElements.map(el => 
+                        VIRAL_ELEMENTS.find(e => e.id === el)?.title
+                      ).join('、')}
+                    </div>
                     <Button
                       variant="outline"
                       onClick={refreshTopics}
@@ -1251,1035 +1501,403 @@ export default function Home() {
                     </Button>
                   </div>
 
-                  {topics.map((topic: any, topicIndex: number) => (
-                    <Card
-                      key={topic.id}
-                      className={`overflow-hidden transition-all cursor-pointer ${
-                        topic.is_selected
-                          ? "border-purple-500 ring-2 ring-purple-500/20"
-                          : "border-gray-200 hover:border-purple-300"
-                      } ${generatingScript ? 'pointer-events-none opacity-50' : ''}`}
-                      onClick={() => selectTopic(topic.id)}
-                    >
-                      {/* 选题头部 */}
-                      <div className="p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge className="bg-purple-600">选题 {topicIndex + 1}</Badge>
-                              {topic.is_selected && (
-                                <Badge variant="outline" className="text-green-600 border-green-600">
-                                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                                  已选择
-                                </Badge>
-                              )}
-                            </div>
-                            <h4 className="text-lg font-semibold">{topic.title}</h4>
-                          </div>
-                          {topic.is_selected && (
-                            <CheckCircle2 className="w-6 h-6 text-purple-600" />
-                          )}
-                        </div>
-                        
-                        {/* 核心冲突和情绪钩子 */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                          <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                            <span className="text-xs text-purple-600 font-medium">💥 核心冲突</span>
-                            <p className="text-sm mt-1">{topic.conflict_point}</p>
-                          </div>
-                          <div className="p-3 bg-pink-50 dark:bg-pink-900/20 rounded-lg">
-                            <span className="text-xs text-pink-600 font-medium">🎭 情绪钩子</span>
-                            <p className="text-sm mt-1">{topic.emotion_hook}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 7种风格变体 */}
-                      {topic.styleVariants && topic.styleVariants.length > 0 && (
-                        <div className="border-t bg-gray-50/50 dark:bg-gray-800/50">
-                          <div className="p-3">
-                            <p className="text-xs font-medium text-gray-500 mb-3">
-                              🎨 7种风格标题变体（点击查看详情）
-                            </p>
-                            <div className="space-y-2">
-                              {topic.styleVariants.map((variant: any, vIndex: number) => (
-                                <div
-                                  key={vIndex}
-                                  className="p-3 bg-white dark:bg-gray-800 rounded-lg border hover:shadow-md transition-shadow"
-                                >
-                                  <div className="flex items-start gap-3">
-                                    <Badge 
-                                      variant="outline" 
-                                      className="shrink-0 text-xs"
-                                      style={{
-                                        borderColor: 
-                                          variant.styleId === 'suspense' ? '#f59e0b' :
-                                          variant.styleId === 'authority' ? '#3b82f6' :
-                                          variant.styleId === 'trend' ? '#ec4899' :
-                                          variant.styleId === 'contrast' ? '#ef4444' :
-                                          variant.styleId === 'tutorial' ? '#10b981' :
-                                          variant.styleId === 'pain' ? '#8b5cf6' :
-                                          variant.styleId === 'emotion' ? '#f97316' : '#6b7280'
-                                      }}
-                                    >
-                                      {variant.styleName}
-                                    </Badge>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium">{variant.title}</p>
-                                      <div className="mt-2 flex gap-2 text-xs text-gray-500">
-                                        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
-                                          冲突：{variant.conflict}
-                                        </span>
-                                        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
-                                          情绪：{variant.emotion}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </Card>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* 步骤4: 脚本确认 */}
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-purple-600" />
-                    第4步：脚本确认
-                  </CardTitle>
-                  <CardDescription>
-                    查看生成的脚本，确认后进入分镜拆分
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {script && (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-lg font-semibold">{script.title}</h3>
-                          <p className="text-sm text-gray-500">人设：{script.persona || '根据商户类型自动生成'}</p>
-                        </div>
-                        <Badge className="text-lg px-3 py-1">{script.duration}秒</Badge>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="p-4 bg-purple-50 dark:bg-gray-800 rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium flex items-center gap-2">
-                              <span>🎬</span> 开头钩子（4秒）
-                            </h4>
-                          </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {script.opening_hook?.visual}
-                          </p>
-                          <p className="text-sm mt-2 italic text-purple-700 dark:text-purple-300">
-                            "{script.opening_hook?.script}"
-                          </p>
-                        </div>
-
-                        <div className="p-4 bg-pink-50 dark:bg-gray-800 rounded-lg">
-                          <h4 className="font-medium mb-3">📝 中间内容</h4>
-                          {script.middle_content?.map((section: any, i: number) => (
-                            <div key={i} className="mb-4 pb-4 border-b border-pink-200 dark:border-pink-800 last:border-0 last:mb-0 last:pb-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                <p className="font-medium text-sm text-pink-600">{section.section}</p>
-                              </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">{section.visual}</p>
-                              <p className="text-sm mt-1 italic text-gray-700 dark:text-gray-300">"{section.script}"</p>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="p-4 bg-orange-50 dark:bg-gray-800 rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium flex items-center gap-2">
-                              <span>🎯</span> 结尾引导
-                            </h4>
-                          </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {script.ending_guide?.visual}
-                          </p>
-                          <p className="text-sm mt-2 italic text-orange-700 dark:text-orange-300">
-                            "{script.ending_guide?.cta}"
-                          </p>
-                        </div>
-                      </div>
-
-                      <Button
-                        onClick={generateShotScript}
-                        disabled={loading}
-                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
-                      >
+                  {topics.length === 0 && (
+                    <div className="text-center py-8">
+                      <Button onClick={generateTopics} disabled={loading}>
                         {loading ? (
                           <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            生成分镜脚本中...
+                            生成中...
                           </>
                         ) : (
                           <>
-                            <Film className="w-4 h-4 mr-2" />
-                            确认并生成分镜脚本
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            生成8个爆款选题
                           </>
                         )}
                       </Button>
-                    </>
-                  )}
-                  
-                  {!script && (
-                    <div className="text-center py-12">
-                      <FileText className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                      <p className="text-gray-600">请先选择选题以生成脚本</p>
                     </div>
                   )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {topics.map((topic: any, topicIndex: number) => (
+                      <div
+                        key={topic.id}
+                        onClick={() => selectTopic(topic.id)}
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          topic.is_selected
+                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
+                            : "border-gray-200 hover:border-purple-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge>选题 {topicIndex + 1}</Badge>
+                          {topic.is_selected && <CheckCircle2 className="w-4 h-4 text-purple-600" />}
+                        </div>
+                        <h4 className="font-semibold mb-2">{topic.title}</h4>
+                        <div className="text-xs text-gray-500 space-y-1">
+                          <p>💥 {topic.conflict_point || topic.conflictPoint}</p>
+                          <p>🎭 {topic.emotion_hook || topic.emotionHook}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                    <Button variant="outline" onClick={() => setCurrentStepWithTrack(3)} className="flex-1">
+                      <ChevronLeft className="w-4 h-4 mr-2" />
+                      返回元素选择
+                    </Button>
+                    <Button 
+                      onClick={() => setCurrentStepWithTrack(5)} 
+                      disabled={!topics.some((t: any) => t.is_selected)}
+                      className="flex-1"
+                    >
+                      下一步：生成口播脚本
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
           )}
 
-          {/* 步骤5: 分镜脚本确认 */}
+          {/* 步骤5: 口播脚本 */}
           {currentStep === 5 && (
             <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Film className="w-5 h-5 text-purple-600" />
-                    第5步：分镜脚本确认
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    第5步：口播脚本
                   </CardTitle>
                   <CardDescription>
-                    查看并确认分镜脚本，可编辑优化后进入素材上传
+                    根据时长生成口播文案，严格控制字数
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {shotScript && shotScript.shots.length > 0 ? (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold">{shotScript.title || '分镜脚本'}</h3>
-                          <p className="text-sm text-gray-500">总时长: {shotScript.totalDuration}秒 · {shotScript.shotCount} 个分镜</p>
-                        </div>
-                        <Button
-                          onClick={optimizeVeoPrompts}
-                          disabled={loading || optimizedShots.length > 0}
-                          variant="outline"
-                        >
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          {optimizedShots.length > 0 ? "提示词已优化" : "优化Veo提示词"}
-                        </Button>
+                <CardContent className="space-y-4">
+                  {/* 字数进度条 */}
+                  {script && (
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>字数进度</span>
+                        <span>{script.wordCount || 0} / {script.targetWordCount?.min || 0}-{script.targetWordCount?.max || 0} 字</span>
                       </div>
-
-                      <div className="space-y-4">
-                        {(optimizedShots.length > 0 ? optimizedShots : shotScript.shots).map((shot: any, index: number) => (
-                          <div key={shot.shotId || index} className="p-4 bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-900/10 dark:to-blue-900/10 rounded-lg border border-purple-100 dark:border-purple-800">
-                            {/* 分镜头部 */}
-                            <div className="flex items-center gap-3 mb-4">
-                              <Badge className="bg-purple-600 text-white text-sm px-3 py-1">
-                                镜头 S{String(index + 1).padStart(2, '0')}
-                              </Badge>
-                              <span className="text-sm text-gray-500 font-medium">{shot.duration}秒</span>
-                              <Badge variant={
-                                shot.scriptSection === 'opening_hook' ? 'default' : 
-                                shot.scriptSection === 'ending_guide' ? 'destructive' : 
-                                'secondary'
-                              }>
-                                {shot.scriptSection === 'opening_hook' ? '🎬 开头钩子' : 
-                                 shot.scriptSection === 'ending_guide' ? '🎯 结尾引导' : 
-                                 '📝 中间内容'}
-                              </Badge>
-                              {shot.sceneTitle && (
-                                <span className="text-sm text-gray-600 ml-auto">{shot.sceneTitle}</span>
-                              )}
-                            </div>
-
-                            {/* Veo 8要素展示 */}
-                            <div className="space-y-3">
-                              {/* 1. 主体 + 2. 动作 */}
-                              <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border-l-4 border-purple-500">
-                                <label className="text-xs font-semibold text-purple-700 flex items-center gap-1 mb-2">
-                                  <span>👤</span> 1. 主体与动作 (Subject & Action)
-                                </label>
-                                <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
-                                  {shot.description?.action || shot.description?.visual?.split('，')[0] || shot.visual || '暂无描述'}
-                                </p>
-                              </div>
-
-                              {/* 中文画面描述 - 优化后 */}
-                              <div className="p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg border-l-4 border-blue-500">
-                                <label className="text-xs font-semibold text-blue-700 flex items-center gap-1 mb-2">
-                                  <span>📝</span> 优化后的中文提示词
-                                </label>
-                                <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
-                                  {shot.veoPrompt?.chinese || shot.description?.visual || shot.visual || '暂无中文描述'}
-                                </p>
-                              </div>
-
-                              {/* 英文Veo提示词 - 核心 */}
-                              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-green-500">
-                                <label className="text-xs font-semibold text-green-700 flex items-center gap-1 mb-2">
-                                  <span>🌍</span> 2. English Prompt for Veo 3.1
-                                  <Badge variant="outline" className="ml-2 text-[10px]">复制使用</Badge>
-                                </label>
-                                <div className="bg-white dark:bg-gray-800 p-3 rounded border font-mono text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                                  {shot.veoPrompt?.english || shot.veoPrompt || '暂无英文描述'}
-                                </div>
-                              </div>
-
-                              {/* 3-7要素详情 */}
-                              <div className="grid grid-cols-2 gap-2">
-                                {/* 3. 风格 */}
-                                <div className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                                  <span className="text-xs text-gray-500">3. 风格 Style</span>
-                                  <p className="text-sm font-medium">{shot.style || shot.description?.style || 'Cinematic'}</p>
-                                </div>
-                                {/* 4. 相机位置与运动 */}
-                                <div className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                                  <span className="text-xs text-gray-500">4. 相机 Camera</span>
-                                  <p className="text-sm font-medium">{shot.cameraWork?.movement || shot.camera?.movement || 'Static shot'}</p>
-                                </div>
-                                {/* 5. 构图 */}
-                                <div className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                                  <span className="text-xs text-gray-500">5. 构图 Composition</span>
-                                  <p className="text-sm font-medium">{shot.cameraWork?.shot || shot.camera?.shot || 'Medium shot'}</p>
-                                </div>
-                                {/* 6. 对焦与镜头效果 */}
-                                <div className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                                  <span className="text-xs text-gray-500">6. 镜头效果 Lens</span>
-                                  <p className="text-sm font-medium">{shot.cameraWork?.lens || shot.lens || 'Natural focus'}</p>
-                                </div>
-                                {/* 7. 氛围 - 时间 */}
-                                <div className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                                  <span className="text-xs text-gray-500">7. 时间 Time</span>
-                                  <p className="text-sm font-medium">{shot.timeOfDay || shot.atmosphere?.time || 'Day'}</p>
-                                </div>
-                                {/* 7. 氛围 - 色调 */}
-                                <div className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                                  <span className="text-xs text-gray-500">7. 色调 Color</span>
-                                  <p className="text-sm font-medium">{shot.colorTone || shot.atmosphere?.color || 'Natural lighting'}</p>
-                                </div>
-                              </div>
-
-                              {/* 8. 音频提示 */}
-                              {(shot.audioPrompt || shot.dialogue) && (
-                                <div className="p-3 bg-pink-50/50 dark:bg-pink-900/20 rounded-lg border-l-4 border-pink-500">
-                                  <label className="text-xs font-semibold text-pink-700 flex items-center gap-1 mb-2">
-                                    <span>🔊</span> 8. 音频提示 Audio Prompt
-                                  </label>
-                                  {shot.dialogue && (
-                                    <div className="mb-2">
-                                      <span className="text-xs text-gray-500">台词 / Dialogue:</span>
-                                      <p className="text-sm italic text-gray-800 dark:text-gray-200">
-                                        "{typeof shot.dialogue === 'object' ? (shot.dialogue.chinese || shot.dialogue.english) : shot.dialogue}"
-                                      </p>
-                                    </div>
-                                  )}
-                                  {shot.audioPrompt?.chinese && (
-                                    <div className="text-sm text-gray-600">
-                                      <span className="text-xs text-gray-500">音效：</span>
-                                      {shot.audioPrompt.chinese}
-                                    </div>
-                                  )}
-                                  {shot.audioPrompt?.english && (
-                                    <div className="text-sm text-gray-600 mt-1 font-mono bg-white dark:bg-gray-800 p-2 rounded">
-                                      <span className="text-xs text-gray-500">English：</span>
-                                      {shot.audioPrompt.english}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                      <Progress 
+                        value={((script.wordCount || 0) / (script.targetWordCount?.max || 200)) * 100} 
+                        className="h-2"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>预估时长：{script.estimatedDuration}秒</span>
+                        <span>目标时长：{videoDuration}秒</span>
                       </div>
-
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          onClick={() => setCurrentStepWithTrack(4)}
-                          className="flex-1"
-                        >
-                          <ChevronLeft className="w-4 h-4 mr-2" />
-                          返回修改脚本
-                        </Button>
-                        <Button
-                          onClick={() => setCurrentStepWithTrack(6)}
-                          className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
-                        >
-                          确认分镜，进入素材上传
-                          <ChevronRight className="w-4 h-4 ml-2" />
-                        </Button>
-                      </div>
-
-                      {/* 合成结果预览 */}
-                      {mergedVideo && (
-                        <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200">
-                          <h4 className="font-medium text-green-800 mb-3 flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5" />
-                            视频合成完成
-                          </h4>
-                          <div className="aspect-video bg-black rounded-lg overflow-hidden max-w-xl mx-auto">
-                            <video 
-                              src={mergedVideo} 
-                              controls 
-                              className="w-full h-full"
-                            />
-                          </div>
-                          <div className="mt-3 flex gap-2 justify-center">
-                            <a
-                              href={mergedVideo}
-                              download
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                            >
-                              <Download className="w-4 h-4" />
-                              下载视频
-                            </a>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-center py-12">
-                      <Film className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                      <p className="text-gray-600">请先在步骤4生成脚本后，点击"生成分镜脚本"</p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
 
-          {/* 步骤6: 素材上传 */}
-          {currentStep === 6 && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Upload className="w-5 h-5 text-purple-600" />
-                    第6步：素材上传
-                  </CardTitle>
-                  <CardDescription>
-                    根据分镜脚本分析，上传对应场景的素材
-                  </CardDescription>
-                  
-                  {/* 视频比例选择 */}
-                  <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg">
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
-                      📐 选择视频比例（影响Veo视频生成尺寸）
-                    </label>
-                    <div className="flex gap-4">
-                      <div
-                        onClick={() => setAspectRatio("16:9")}
-                        className={`flex-1 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                          aspectRatio === "16:9"
-                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30"
-                            : "border-gray-200 hover:border-purple-300"
-                        }`}
-                      >
-                        <div className="flex flex-col items-center">
-                          <div className="w-16 h-9 bg-gray-800 rounded mb-2 flex items-center justify-center">
-                            <span className="text-white text-xs">16:9</span>
-                          </div>
-                          <span className="text-sm font-medium">横屏</span>
-                          <span className="text-xs text-gray-500">适合抖音/快手横版、B站</span>
-                        </div>
-                      </div>
-                      <div
-                        onClick={() => setAspectRatio("9:16")}
-                        className={`flex-1 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                          aspectRatio === "9:16"
-                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30"
-                            : "border-gray-200 hover:border-purple-300"
-                        }`}
-                      >
-                        <div className="flex flex-col items-center">
-                          <div className="w-9 h-16 bg-gray-800 rounded mb-2 flex items-center justify-center">
-                            <span className="text-white text-xs">9:16</span>
-                          </div>
-                          <span className="text-sm font-medium">竖屏</span>
-                          <span className="text-xs text-gray-500">适合抖音/快手竖版、视频号</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {shotScript && shotScript.shots ? (
-                    <>
-                      {/* 智能素材需求分析 */}
-                      <div className="space-y-4">
-                        {shotScript.shots.map((shot: any, index: number) => {
-                          // 优先使用API返回的materialNeeds，否则使用智能fallback
-                          let materialNeeds: { icon: string; label: string; desc: string; required?: boolean }[] = [];
-                          
-                          if (shot.materialNeeds && Array.isArray(shot.materialNeeds) && shot.materialNeeds.length > 0) {
-                            // 使用API返回的素材需求
-                            materialNeeds = shot.materialNeeds.map((need: any) => ({
-                              icon: need.type === '人物素材' ? '👤' :
-                                    need.type === '产品素材' ? '📦' :
-                                    need.type === '环境素材' ? '🏢' :
-                                    need.type === '门店外观' ? '🚪' :
-                                    need.type === '产品展示' ? '🛍️' :
-                                    need.type === '促销物料' ? '🏷️' :
-                                    need.type === '试妆区域' ? '💄' :
-                                    need.type === '柜台场景' ? '🏪' : '🎬',
-                              label: need.type,
-                              desc: need.description || '',
-                              required: need.required
-                            }));
-                          } else {
-                            // 智能fallback：从分镜内容提取素材需求
-                            const shotText = [
-                              shot.description?.visual,
-                              shot.veoPrompt?.chinese,
-                              shot.sceneTitle,
-                              shot.dialogue?.chinese
-                            ].filter(Boolean).join(' ');
-                            
-                            // 根据内容关键词分析素材需求
-                            if (shotText.includes('人物') || shotText.includes('达人') || shotText.includes('老板') || shotText.includes('员工') || shotText.includes('人') || shotText.includes('展示')) {
-                              materialNeeds.push({ icon: '👤', label: '人物素材', desc: '人设展示、动作表情' });
-                            }
-                            if (shotText.includes('蛋糕') || shotText.includes('咖啡') || shotText.includes('产品') || shotText.includes('甜品') || shotText.includes('美食')) {
-                              materialNeeds.push({ icon: '📦', label: '产品素材', desc: '产品特写、外观细节' });
-                            }
-                            if (shotText.includes('店') || shotText.includes('环境') || shotText.includes('场景') || shotText.includes('内部')) {
-                              materialNeeds.push({ icon: '🏢', label: '环境素材', desc: '店内布置、氛围展示' });
-                            }
-                            if (shotText.includes('门头') || shotText.includes('入口') || shotText.includes('外观')) {
-                              materialNeeds.push({ icon: '🚪', label: '门店外观', desc: '店铺门头、入口环境' });
-                            }
-                            if (shotText.includes('二维码') || shotText.includes('团购') || shotText.includes('链接')) {
-                              materialNeeds.push({ icon: '🏷️', label: '转化素材', desc: '二维码、团购信息' });
-                            }
-                            
-                            // 如果没有识别到特定需求，添加通用素材需求
-                            if (materialNeeds.length === 0) {
-                              materialNeeds.push({ icon: '🎬', label: '场景素材', desc: '与该场景相关的视频或图片' });
-                            }
-                          }
-                          
-                          return (
-                            <div key={index} className="p-4 bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-900/10 dark:to-blue-900/10 rounded-lg border">
-                              {/* 分镜信息 */}
-                              <div className="flex items-center gap-2 mb-3">
-                                <Badge className="bg-purple-600 text-white">镜头 S{String(index + 1).padStart(2, '0')}</Badge>
-                                <span className="text-xs text-gray-500">{shot.duration}秒</span>
-                                <Badge variant={
-                                  shot.scriptSection === 'opening_hook' ? 'default' : 
-                                  shot.scriptSection === 'ending_guide' ? 'destructive' : 
-                                  'secondary'
-                                }>
-                                  {shot.scriptSection === 'opening_hook' ? '🎬 开头钩子' : 
-                                   shot.scriptSection === 'ending_guide' ? '🎯 结尾引导' : 
-                                   '📝 中间内容'}
-                                </Badge>
-                                <span className="text-xs text-gray-400 truncate max-w-[200px]">
-                                  {shot.sceneTitle || shot.description?.visual?.slice(0, 30) || ''}
-                                </span>
-                              </div>
-                              
-                              {/* 分镜内容摘要 */}
-                              {shot.description?.visual && (
-                                <div className="mb-3 p-2 bg-white/50 dark:bg-gray-800/50 rounded text-xs text-gray-600">
-                                  <span className="font-medium">画面内容：</span>
-                                  {shot.description.visual}
-                                </div>
-                              )}
-                              
-                              {/* 所需素材类型 */}
-                              <div className="space-y-3">
-                                {materialNeeds.map((need, needIndex) => (
-                                  <div key={needIndex} className="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg">
-                                    <span className="text-2xl">{need.icon}</span>
-                                    <div className="flex-1">
-                                      <div className="flex items-center justify-between">
-                                        <span className="font-medium text-sm">{need.label}</span>
-                                        <Badge variant={need.required ? "destructive" : "outline"} className="text-xs">
-                                          {need.required ? '必需' : '可选'}
-                                        </Badge>
-                                      </div>
-                                      <p className="text-xs text-gray-500 mt-1">{need.desc}</p>
-                                      
-                                      {/* 该素材类型的上传区域 */}
-                                      <div className="mt-3">
-                                        <Input
-                                          type="file"
-                                          accept="image/*,video/*"
-                                          onChange={(e) => handleUploadMaterial(e, index, need.label)}
-                                          className="hidden"
-                                          id={`file-upload-${index}-${needIndex}`}
-                                        />
-                                        <div className="flex items-center gap-2">
-                                          <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            asChild
-                                            className="flex-1"
-                                          >
-                                            <label htmlFor={`file-upload-${index}-${needIndex}`} className="cursor-pointer">
-                                              <Plus className="w-4 h-4 mr-1" />
-                                              上传{need.label}
-                                            </label>
-                                          </Button>
-                                          
-                                          {/* 显示该分类已上传的文件 */}
-                                          {materials.filter(m => m.shotIndex === index && m.category === need.label).length > 0 && (
-                                            <Badge className="bg-green-100 text-green-700">
-                                              已上传 {materials.filter(m => m.shotIndex === index && m.category === need.label).length}
-                                            </Badge>
-                                          )}
-                                        </div>
-                                        
-                                        {/* 显示该分类的已上传文件预览 */}
-                                        <div className="flex gap-2 mt-2 flex-wrap">
-                                          {materials
-                                            .filter(m => m.shotIndex === index && m.category === need.label)
-                                            .map((mat) => (
-                                              <div key={mat.id} className="relative w-16 h-16">
-                                                {mat.type === "image" ? (
-                                                  <img src={mat.url} alt="" className="w-full h-full object-cover rounded" />
-                                                ) : (
-                                                  <video src={mat.url} className="w-full h-full object-cover rounded" />
-                                                )}
-                                                <button
-                                                  onClick={() => setMaterials(prev => prev.filter(m => m.id !== mat.id))}
-                                                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
-                                                >
-                                                  ×
-                                                </button>
-                                              </div>
-                                            ))}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
+                  {/* 脚本内容 */}
+                  {script ? (
+                    <div className="space-y-4">
+                      {/* 开头钩子 */}
+                      <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border-l-4 border-red-500">
+                        <h4 className="font-medium text-red-700 mb-2">🎣 开头钩子（前3秒）</h4>
+                        <p className="text-sm">{script.openingHook}</p>
                       </div>
 
-                      {/* 素材上传汇总 */}
-                      {materials.length > 0 && (
-                        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-green-700">已上传素材汇总</span>
-                            <Badge className="bg-green-100 text-green-700">{materials.length} 个文件</Badge>
-                          </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {materials.map((mat) => (
-                              <div key={mat.id} className="relative aspect-video bg-gray-100 rounded overflow-hidden">
-                                {mat.type === "image" ? (
-                                  <img src={mat.url} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                  <video src={mat.url} className="w-full h-full object-cover" />
-                                )}
-                                {mat.category && (
-                                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate">
-                                    {mat.category}
-                                  </div>
-                                )}
-                              </div>
+                      {/* 中间内容 */}
+                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
+                        <h4 className="font-medium text-blue-700 mb-2">📝 中间内容</h4>
+                        <p className="text-sm whitespace-pre-wrap">{script.mainContent}</p>
+                      </div>
+
+                      {/* 结尾引导 */}
+                      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500">
+                        <h4 className="font-medium text-green-700 mb-2">🎯 结尾行动号召</h4>
+                        <p className="text-sm">{script.closingCTA}</p>
+                      </div>
+
+                      {/* 使用的钩子词根 */}
+                      {script.usedHooks && script.usedHooks.length > 0 && (
+                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <p className="text-xs text-gray-500 mb-2">使用的钩子词根：</p>
+                          <div className="flex flex-wrap gap-1">
+                            {script.usedHooks.map((hook: string, i: number) => (
+                              <Badge key={i} variant="secondary" className="text-xs">{hook}</Badge>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          onClick={() => setCurrentStepWithTrack(5)}
-                          className="flex-1"
-                        >
-                          <ChevronLeft className="w-4 h-4 mr-2" />
-                          返回分镜确认
-                        </Button>
-                        <Button
-                          onClick={submitVeoTasks}
-                          disabled={loading}
-                          className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
-                        >
-                          {loading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              提交中...
-                            </>
-                          ) : (
-                            <>
-                              <Video className="w-4 h-4 mr-2" />
-                              提交视频生成
-                            </>
-                          )}
-                        </Button>
+                      {/* 完整脚本 */}
+                      <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                        <h4 className="font-medium mb-2">📄 完整脚本</h4>
+                        <Textarea 
+                          value={script.script}
+                          onChange={(e) => {
+                            const newScript = e.target.value;
+                            setScript({
+                              ...script,
+                              script: newScript,
+                              wordCount: newScript.length,
+                              estimatedDuration: Math.ceil(newScript.length / 4.5)
+                            });
+                          }}
+                          className="min-h-[200px]"
+                        />
                       </div>
-
-                      {/* 合成结果预览 */}
-                      {mergedVideo && (
-                        <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200">
-                          <h4 className="font-medium text-green-800 mb-3 flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5" />
-                            视频合成完成
-                          </h4>
-                          <div className="aspect-video bg-black rounded-lg overflow-hidden max-w-xl mx-auto">
-                            <video 
-                              src={mergedVideo} 
-                              controls 
-                              className="w-full h-full"
-                            />
-                          </div>
-                          <div className="mt-3 flex gap-2 justify-center">
-                            <a
-                              href={mergedVideo}
-                              download
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                            >
-                              <Download className="w-4 h-4" />
-                              下载视频
-                            </a>
-                          </div>
-                        </div>
-                      )}
-                    </>
+                    </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                      <p className="text-gray-600">请先在步骤5确认分镜脚本</p>
+                    <div className="text-center py-8">
+                      <Button onClick={generateScript} disabled={loading}>
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            生成中...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="w-4 h-4 mr-2" />
+                            生成口播脚本
+                          </>
+                        )}
+                      </Button>
                     </div>
                   )}
+
+                  <div className="flex gap-3 mt-6">
+                    <Button variant="outline" onClick={() => setCurrentStepWithTrack(4)} className="flex-1">
+                      <ChevronLeft className="w-4 h-4 mr-2" />
+                      返回选题
+                    </Button>
+                    <Button 
+                      onClick={() => setCurrentStepWithTrack(6)} 
+                      disabled={!script}
+                      className="flex-1"
+                    >
+                      下一步：生成数字人视频
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
           )}
 
-          {/* 步骤7: 视频生成 */}
-          {currentStep === 7 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Video className="w-5 h-5 text-purple-600" />
-                  第7步：视频生成 (Google Veo 3.1)
-                </CardTitle>
-                <CardDescription>
-                  AI正在生成您的爆款短视频
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* 总体进度 */}
-                {veoOperations.size > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>总体进度</span>
-                      <span>{completedCount}/{veoOperations.size} 完成</span>
-                    </div>
-                    <Progress value={totalProgress} className="h-3" />
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      视频生成通常需要 2~4 分钟，请耐心等待
-                    </p>
-                  </div>
-                )}
-
-                {/* 各分镜状态 */}
-                {veoOperations.size > 0 && (
-                  <div className="space-y-3">
-                    {Array.from(veoOperations.entries()).map(([opName, op], index) => (
-                      <div key={opName} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium">分镜 {op.shotId || index + 1}</span>
-                          <Badge variant={
-                            op.status === "completed" ? "default" : 
-                            op.status === "failed" ? "destructive" : "secondary"
-                          }>
-                            {op.status === "completed" ? "已完成" : 
-                             op.status === "failed" ? "失败" : "生成中..."}
-                          </Badge>
-                        </div>
-                        <Progress value={op.progress} className="h-2" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* 生成的视频 */}
-                {videos.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="font-medium">生成的视频</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {videos.map((video: any, i: number) => (
-                        <div key={i} className="relative rounded-lg overflow-hidden bg-gray-100">
-                          {video.videoUrl?.startsWith("gs://") ? (
-                            <div className="aspect-video flex flex-col items-center justify-center p-4 bg-gray-100">
-                              <Video className="w-12 h-12 text-gray-400 mb-2" />
-                              <p className="text-sm text-gray-600 text-center">视频已存储在 GCS</p>
-                              <code className="text-xs bg-gray-200 px-2 py-1 rounded mt-2 break-all">
-                                {video.videoUrl}
-                              </code>
-                            </div>
-                          ) : (
-                            <video
-                              src={video.videoUrl}
-                              controls
-                              className="w-full aspect-video"
-                            />
-                          )}
-                          <div className="absolute bottom-2 left-2">
-                            <Badge variant="secondary">
-                              分镜 {video.shotId || i + 1}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 空状态 */}
-                {veoOperations.size === 0 && (
-                  <div className="text-center py-12">
-                    <Video className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-600">等待提交视频生成任务...</p>
-                  </div>
-                )}
-
-                {/* 进入剪辑按钮 - 只要有成功生成的视频就可以进入 */}
-                {(completedCount > 0 || failedCount > 0) && veoOperations.size > 0 && (
-                  <Button 
-                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600"
-                    onClick={() => setCurrentStepWithTrack(8)}
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    进入视频剪辑
-                    {failedCount > 0 && (
-                      <span className="ml-2 text-yellow-200">({failedCount}个失败)</span>
-                    )}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 步骤8: 视频剪辑合成 */}
-          {currentStep === 8 && (
+          {/* 步骤6: 数字人生成 */}
+          {currentStep === 6 && (
             <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Play className="w-5 h-5 text-purple-600" />
-                    第8步：视频剪辑合成
+                    <Video className="w-5 h-5 text-purple-600" />
+                    第6步：生成数字人视频
                   </CardTitle>
                   <CardDescription>
-                    调整片段顺序、添加转场效果、合成最终视频
+                    上传人像图片，选择声音和动作风格，生成口播数字人视频
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {videos.length > 0 ? (
-                    <>
-                      {/* 视频片段列表 */}
-                      <div className="space-y-4">
-                        <h4 className="font-medium flex items-center gap-2">
-                          <span>🎬</span> 视频片段（可拖拽调整顺序）
-                        </h4>
-                        <div className="space-y-3">
-                          {videos.map((video: any, index: number) => (
-                            <div 
-                              key={video.id || index} 
-                              className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border"
-                            >
-                              <div className="flex items-center gap-4">
-                                <Badge variant="secondary" className="text-lg px-3 py-1">
-                                  {index + 1}
-                                </Badge>
-                                <div className="flex-1">
-                                  <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden max-w-[200px]">
-                                    {video.videoUrl?.startsWith("gs://") ? (
-                                      <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                                        <Video className="w-8 h-8 text-gray-400" />
-                                      </div>
-                                    ) : (
-                                      <video 
-                                        src={video.videoUrl} 
-                                        className="w-full h-full object-cover"
-                                        preload="metadata"
-                                      />
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex-1 space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <Badge>分镜 {video.shotId || index + 1}</Badge>
-                                    <span className="text-sm text-gray-500">
-                                      {video.duration || 5}秒
-                                    </span>
-                                  </div>
-                                  {/* 转场选择 */}
-                                  {index > 0 && (
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs text-gray-500">转场：</span>
-                                      <select 
-                                        className="text-xs border rounded px-2 py-1"
-                                        defaultValue="fade"
-                                      >
-                                        <option value="none">无</option>
-                                        <option value="fade">淡入淡出</option>
-                                        <option value="wipe">擦除</option>
-                                        <option value="dissolve">溶解</option>
-                                      </select>
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                  <Button variant="outline" size="sm" disabled={index === 0}>
-                                    ↑
-                                  </Button>
-                                  <Button variant="outline" size="sm" disabled={index === videos.length - 1}>
-                                    ↓
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                  {/* 人像上传 */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium">👤 上传人像图片</label>
+                    <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                      {portraitImage ? (
+                        <div className="relative">
+                          <img src={portraitImage} alt="人像" className="max-h-64 mx-auto rounded-lg" />
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            className="absolute top-2 right-2"
+                            onClick={() => setPortraitImage(null)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </div>
-
-                      {/* 剪辑设置 */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* BGM选择 */}
-                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <label className="text-sm font-medium flex items-center gap-2 mb-3">
-                            <span>🎵</span> 背景音乐
-                          </label>
-                          <select className="w-full border rounded-lg px-3 py-2 text-sm">
-                            <option value="">选择背景音乐风格</option>
-                            <option value="upbeat">欢快动感</option>
-                            <option value="warm">温馨治愈</option>
-                            <option value="trendy">时尚潮流</option>
-                            <option value="elegant">优雅大气</option>
-                          </select>
-                        </div>
-
-                        {/* 字幕设置 */}
-                        <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                          <label className="text-sm font-medium flex items-center gap-2 mb-3">
-                            <span>📝</span> 字幕设置
-                          </label>
-                          <div className="space-y-2">
-                            <label className="flex items-center gap-2 text-sm">
-                              <input type="checkbox" defaultChecked />
-                              <span>自动生成字幕</span>
-                            </label>
-                            <label className="flex items-center gap-2 text-sm">
-                              <input type="checkbox" defaultChecked />
-                              <span>显示标题卡片</span>
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 视频信息汇总 */}
-                      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-sm font-medium text-green-700">视频信息</span>
-                            <p className="text-xs text-green-600 mt-1">
-                              共 {videos.length} 个片段 · 预估时长 {videos.reduce((sum: number, v: any) => sum + (v.duration || 4), 0)} 秒
-                            </p>
-                          </div>
-                          <Badge variant="outline" className="text-green-700">
-                            {aspectRatio} 格式
-                          </Badge>
-                        </div>
-                      </div>
-
-                      {/* 操作按钮 */}
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          onClick={() => setCurrentStepWithTrack(7)}
-                          className="flex-1"
-                        >
-                          <ChevronLeft className="w-4 h-4 mr-2" />
-                          返回视频生成
-                        </Button>
-                        <Button
-                          onClick={async () => {
-                            if (!project || videos.length === 0) {
-                              toast.error("没有可合成的视频");
-                              return;
-                            }
-                            
-                            // 获取脚本中的对话内容用于字幕
-                            const videosWithDialogue = videos.map((video: any, index: number) => {
-                              // 从分镜脚本中获取对应的台词
-                              const shot = script?.shot_list?.[index];
-                              return {
-                                ...video,
-                                dialogue: shot?.dialogue || shot?.content || ""
-                              };
-                            });
-                            
-                            setLoading(true);
-                            toast.info("正在合成视频，请稍候...");
-                            
-                            try {
-                              const res = await fetch("/api/videos/merge", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  projectId: project.id,
-                                  videos: videosWithDialogue,
-                                  addSubtitles: true,
-                                  aspectRatio: aspectRatio
-                                })
-                              });
-                              
-                              const data = await res.json();
-                              
-                              if (data.success) {
-                                setMergedVideo(data.video_url);
-                                toast.success(`视频合成完成！${data.message || ''}`);
-                              } else {
-                                toast.error(data.error || "视频合成失败");
+                      ) : (
+                        <div>
+                          <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500">点击或拖拽上传人像图片</p>
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            className="mt-2"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (ev) => {
+                                  setPortraitImage(ev.target?.result as string);
+                                };
+                                reader.readAsDataURL(file);
                               }
-                            } catch (error) {
-                              console.error("视频合成失败:", error);
-                              toast.error("视频合成失败");
-                            } finally {
-                              setLoading(false);
-                            }
-                          }}
-                          disabled={loading}
-                          className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600"
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 声音选择 */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium">🎵 选择声音风格</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {VOICE_STYLES.map((voice) => (
+                        <div
+                          key={voice.id}
+                          onClick={() => setVoiceStyle(voice.id)}
+                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all text-center ${
+                            voiceStyle === voice.id
+                              ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
+                              : "border-gray-200 hover:border-purple-300"
+                          }`}
                         >
-                          {loading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              合成中...
-                            </>
-                          ) : (
-                            <>
-                              <Download className="w-4 h-4 mr-2" />
-                              合成并导出视频
-                            </>
-                          )}
-                        </Button>
+                          <span className="text-sm font-medium">{voice.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 动作风格选择 */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium">🎭 选择动作风格</label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                      {MOTION_STYLES.map((motion) => (
+                        <div
+                          key={motion.id}
+                          onClick={() => setMotionStyle(motion.id)}
+                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            motionStyle === motion.id
+                              ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
+                              : "border-gray-200 hover:border-purple-300"
+                          }`}
+                        >
+                          <div className="text-xl mb-1">{motion.icon}</div>
+                          <div className="text-sm font-medium">{motion.title}</div>
+                          <div className="text-xs text-gray-500 mt-1">{motion.description}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 背景图片（可选） */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium">🖼️ 背景图片（可选）</label>
+                    <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                      {backgroundImage ? (
+                        <div className="relative">
+                          <img src={backgroundImage} alt="背景" className="max-h-40 mx-auto rounded-lg" />
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            className="absolute top-2 right-2"
+                            onClick={() => setBackgroundImage(null)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div>
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (ev) => {
+                                  setBackgroundImage(ev.target?.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 生成按钮 */}
+                  <Button
+                    onClick={async () => {
+                      if (!portraitImage || !script?.script) {
+                        toast.error("请先上传人像图片并生成脚本");
+                        return;
+                      }
+
+                      setLoading(true);
+                      try {
+                        const res = await fetch("/api/digital-human/generate", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            portraitImage,
+                            script: script.script,
+                            voiceStyle,
+                            motionStyle,
+                            backgroundImage,
+                            aspectRatio
+                          })
+                        });
+
+                        const data = await res.json();
+                        if (data.success) {
+                          setDigitalHumanTaskId(data.task_id);
+                          toast.success("数字人视频生成任务已提交");
+                          // 开始轮询状态
+                          pollDigitalHumanStatus(data.task_id);
+                        } else {
+                          toast.error(data.error || "生成失败");
+                        }
+                      } catch (error) {
+                        toast.error("生成失败");
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading || !portraitImage || !script}
+                    className="w-full"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        生成中...
+                      </>
+                    ) : (
+                      <>
+                        <Video className="w-4 h-4 mr-2" />
+                        生成数字人视频
+                      </>
+                    )}
+                  </Button>
+
+                  {/* 生成结果 */}
+                  {digitalHumanVideo && (
+                    <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <h4 className="font-medium text-green-800 mb-3 flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5" />
+                        数字人视频生成完成
+                      </h4>
+                      <div className="aspect-[9/16] bg-black rounded-lg overflow-hidden max-w-xs mx-auto">
+                        <video src={digitalHumanVideo} controls className="w-full h-full" />
                       </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-12">
-                      <Play className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                      <p className="text-gray-600">请先在步骤7完成视频生成</p>
+                      <div className="mt-3 flex gap-2 justify-center">
+                        <a
+                          href={digitalHumanVideo}
+                          download
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
+                          <Download className="w-4 h-4" />
+                          下载视频
+                        </a>
+                      </div>
                     </div>
                   )}
+
+                  <div className="flex gap-3 mt-6">
+                    <Button variant="outline" onClick={() => setCurrentStepWithTrack(5)} className="flex-1">
+                      <ChevronLeft className="w-4 h-4 mr-2" />
+                      返回脚本
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
