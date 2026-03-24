@@ -288,20 +288,20 @@ const MOTION_STYLES = [
   }
 ];
 
-// 豆包语音合成模型2.0音色列表（适合营销视频，后缀为_uranus_bigtts）
+// 豆包语音合成模型2.0音色列表（字符版，用户实际开通的音色）
 const VOICE_OPTIONS = [
-  { id: "zh_female_shuangkuaisisi_uranus_bigtts", name: "爽快思思", desc: "活力女声，适合电商推荐" },
-  { id: "zh_female_qingxinnvsheng_uranus_bigtts", name: "清新女声", desc: "清新自然，适合知识分享" },
-  { id: "zh_female_tianmeixiaoyuan_uranus_bigtts", name: "甜美小源", desc: "甜美可爱，适合美妆美食" },
-  { id: "zh_female_tianmeitaozi_uranus_bigtts", name: "甜美桃子", desc: "甜美温柔，适合生活类" },
-  { id: "zh_female_linjianvhai_uranus_bigtts", name: "邻家女孩", desc: "亲切真实，适合本地商家" },
+  // 通用场景音色（后缀 _uranus_bigtts）
+  { id: "zh_female_vv_uranus_bigtts", name: "vivi 2.0", desc: "通用女声，适合多种场景" },
+  { id: "zh_female_xiaohe_uranus_bigtts", name: "小何", desc: "通用女声，自然亲切" },
   { id: "zh_male_m191_uranus_bigtts", name: "云舟", desc: "成熟男声，适合品牌背书" },
   { id: "zh_male_taocheng_uranus_bigtts", name: "小天", desc: "阳光男声，适合知识博主" },
-  { id: "zh_male_liufei_uranus_bigtts", name: "刘飞", desc: "专业男声，适合干货讲解" },
-  { id: "zh_female_cancan_uranus_bigtts", name: "知性灿灿", desc: "知性优雅，适合品牌主理人" },
-  { id: "zh_female_sajiaoxuemei_uranus_bigtts", name: "撒娇学妹", desc: "活泼可爱，适合年轻受众" },
-  { id: "zh_female_kefunvsheng_uranus_bigtts", name: "暖阳女声", desc: "温暖亲切，适合服务行业" },
-  { id: "zh_male_dayi_uranus_bigtts", name: "大壹", desc: "磁性男声，适合故事叙述" },
+  { id: "en_male_tim_uranus_bigtts", name: "Tim", desc: "英文男声，适合英文内容" },
+  // 角色扮演音色（后缀 _tob）
+  { id: "saturn_zh_female_cancan_tob", name: "知性灿灿", desc: "角色扮演，知性优雅" },
+  { id: "saturn_zh_female_keainvsheng_tob", name: "可爱女生", desc: "角色扮演，活泼可爱" },
+  { id: "saturn_zh_female_tiaopigongzhu_tob", name: "调皮公主", desc: "角色扮演，俏皮灵动" },
+  { id: "saturn_zh_male_shuanglangshaonian_tob", name: "爽朗少年", desc: "角色扮演，阳光帅气" },
+  { id: "saturn_zh_male_tiancaitongzhuo_tob", name: "天才同桌", desc: "角色扮演，邻家少年" },
 ];
 
 // 时长对应字数
@@ -329,7 +329,7 @@ export default function Home() {
   const [portraitImage, setPortraitImage] = useState<string | null>(null); // 人像图片
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null); // 背景图片
   const [motionStyle, setMotionStyle] = useState<string>("friendly"); // 动作风格
-  const [voiceStyle, setVoiceStyle] = useState<string>("zh_female_shuangkuaisisi_uranus_bigtts"); // 声音风格
+  const [voiceStyle, setVoiceStyle] = useState<string>("zh_female_vv_uranus_bigtts"); // 声音风格
   const [digitalHumanTaskId, setDigitalHumanTaskId] = useState<string | null>(null); // 数字人任务ID
   const [digitalHumanVideo, setDigitalHumanVideo] = useState<string | null>(null); // 生成的数字人视频
   
