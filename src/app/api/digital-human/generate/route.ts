@@ -178,22 +178,21 @@ async function generateTTS(
     app: {
       appid: appId,
       token: token,
-      cluster: "volcano_tts",
+      cluster: "volcano_mega",  // 豆包大模型集群
     },
     user: { uid: "user_001" },
     audio: {
-      voice_type: voiceType,
+      voice_type: "zh_female_shuangkuaisisi_moon_bigtts",  // 豆包2.0音色
       encoding: "mp3",
       speed_ratio: 1.0,
       volume_ratio: 1.0,
+      pitch_ratio: 1.0,
     },
     request: {
       reqid: `req_${Date.now()}`,
       text: script.trim(),
       text_type: "plain",
       operation: "query",
-      with_frontend: 1,
-      frontend_type: "unitTson",
     },
   };
 
