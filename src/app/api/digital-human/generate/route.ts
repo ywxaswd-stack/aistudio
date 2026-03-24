@@ -206,11 +206,11 @@ async function generateTTS(
     app: {
       appid: appId,
       token: token,
-      cluster: "volcano_icl",  // 豆包语音合成模型2.0集群
+      cluster: "volcano_icl",  // 字符版TTS集群
     },
     user: { uid: "user_001" },
     audio: {
-      voice_type: voiceType,  // 使用动态音色
+      voice_type: "BV700_V2_streaming",  // 基础通用音色
       encoding: "mp3",
       speed_ratio: 1.0,
       volume_ratio: 1.0,
