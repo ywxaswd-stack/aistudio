@@ -288,12 +288,20 @@ const MOTION_STYLES = [
   }
 ];
 
-// 声音风格选项
-const VOICE_STYLES = [
-  { id: "female_gentle", title: "温柔女声", voiceType: "BV700_V2_streaming" },
-  { id: "female_energetic", title: "活力女声", voiceType: "BV700_V3_streaming" },
-  { id: "male_calm", title: "沉稳男声", voiceType: "BV406_V2_streaming" },
-  { id: "male_professional", title: "专业男声", voiceType: "BV407_V2_streaming" }
+// 豆包语音合成模型2.0音色列表（适合营销视频，后缀为_uranus_bigtts）
+const VOICE_OPTIONS = [
+  { id: "zh_female_shuangkuaisisi_uranus_bigtts", name: "爽快思思", desc: "活力女声，适合电商推荐" },
+  { id: "zh_female_qingxinnvsheng_uranus_bigtts", name: "清新女声", desc: "清新自然，适合知识分享" },
+  { id: "zh_female_tianmeixiaoyuan_uranus_bigtts", name: "甜美小源", desc: "甜美可爱，适合美妆美食" },
+  { id: "zh_female_tianmeitaozi_uranus_bigtts", name: "甜美桃子", desc: "甜美温柔，适合生活类" },
+  { id: "zh_female_linjianvhai_uranus_bigtts", name: "邻家女孩", desc: "亲切真实，适合本地商家" },
+  { id: "zh_male_m191_uranus_bigtts", name: "云舟", desc: "成熟男声，适合品牌背书" },
+  { id: "zh_male_taocheng_uranus_bigtts", name: "小天", desc: "阳光男声，适合知识博主" },
+  { id: "zh_male_liufei_uranus_bigtts", name: "刘飞", desc: "专业男声，适合干货讲解" },
+  { id: "zh_female_cancan_uranus_bigtts", name: "知性灿灿", desc: "知性优雅，适合品牌主理人" },
+  { id: "zh_female_sajiaoxuemei_uranus_bigtts", name: "撒娇学妹", desc: "活泼可爱，适合年轻受众" },
+  { id: "zh_female_kefunvsheng_uranus_bigtts", name: "暖阳女声", desc: "温暖亲切，适合服务行业" },
+  { id: "zh_male_dayi_uranus_bigtts", name: "大壹", desc: "磁性男声，适合故事叙述" },
 ];
 
 // 时长对应字数
@@ -321,7 +329,7 @@ export default function Home() {
   const [portraitImage, setPortraitImage] = useState<string | null>(null); // 人像图片
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null); // 背景图片
   const [motionStyle, setMotionStyle] = useState<string>("friendly"); // 动作风格
-  const [voiceStyle, setVoiceStyle] = useState<string>("female_gentle"); // 声音风格
+  const [voiceStyle, setVoiceStyle] = useState<string>("zh_female_shuangkuaisisi_uranus_bigtts"); // 声音风格
   const [digitalHumanTaskId, setDigitalHumanTaskId] = useState<string | null>(null); // 数字人任务ID
   const [digitalHumanVideo, setDigitalHumanVideo] = useState<string | null>(null); // 生成的数字人视频
   
@@ -1137,21 +1145,25 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* 声音选择 */}
+                  {/* 声音选择 - 网格卡片样式 */}
                   <div className="space-y-3">
                     <label className="text-sm font-medium">🎵 选择声音风格</label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {VOICE_STYLES.map((voice) => (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {VOICE_OPTIONS.map((voice) => (
                         <div
                           key={voice.id}
                           onClick={() => setVoiceStyle(voice.id)}
-                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all text-center ${
+                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                             voiceStyle === voice.id
-                              ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
-                              : "border-gray-200 hover:border-purple-300"
+                              ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20 shadow-md"
+                              : "border-gray-200 hover:border-purple-300 hover:shadow-sm"
                           }`}
                         >
-                          <span className="text-sm font-medium">{voice.title}</span>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-lg">{voice.id.includes("male") ? "👨" : "👩"}</span>
+                            <span className="text-sm font-semibold">{voice.name}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 line-clamp-2">{voice.desc}</p>
                         </div>
                       ))}
                     </div>
