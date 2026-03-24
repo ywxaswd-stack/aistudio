@@ -559,9 +559,9 @@ export default function Home() {
         const res = await fetch(`/api/digital-human/status?taskId=${taskId}`);
         const data = await res.json();
         
-        if (data.status === "completed" && data.videoUrl) {
+        if (data.status === "completed" && data.video_url) {
           clearInterval(pollInterval);
-          setDigitalHumanVideo(data.videoUrl);
+          setDigitalHumanVideo(data.video_url);
           toast.success("数字人视频生成完成！");
         } else if (data.status === "failed") {
           clearInterval(pollInterval);

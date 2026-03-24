@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFileSync, existsSync, mkdirSync } from "fs";
-import { join } from "path";
-
-const AUDIO_DIR = "/tmp/veo_audio";
-const VIDEO_DIR = "/tmp/veo_videos";
+import crypto from "crypto";
 
 // 火山引擎配置
 const VOLCENGINE_ACCESS_KEY = process.env.VOLCENGINE_ACCESS_KEY || "";
 const VOLCENGINE_SECRET_KEY = process.env.VOLCENGINE_SECRET_KEY || "";
 
-// 动作风格映射
+// 火山引擎 API 配置
+const VOLCENGINE_SERVICE = "cv";
+const VOLCENGINE_REGION = "cn-north-1";
+const VOLCENGINE_HOST = "visual.volcengineapi.com";
+const VOLCENGINE_VERSION = "2022-08-31";
+
+// 动作风格映射（中文 -> 英文描述）
 const MOTION_STYLES: Record<string, string> = {
-  enthusiastic: "Enthusiastically walking towards camera, raising hand to show product, energetic smile",
-  professional: "Stable posture, hand gestures for explanation, focused and serious expression",
-  friendly: "Natural relaxed body language, slight nodding, friendly smile",
-  surprise: "Exaggerated surprised expression, quick hand gestures, creating suspense",
-  authoritative: "Confident upright posture, steady gestures, serious and professional expression"
+  natural: "natural speaking with subtle body movements, relaxed posture",
+  gesture: "energetic hand gestures while speaking, enthusiastic presentation",
+  lively: "lively and animated movements, dynamic presentation style",
+  calm: "calm and composed demeanor, steady and professional posture",
+  professional: "professional presentation style, confident body language"
 };
 
 // 声音风格映射
@@ -27,11 +29,200 @@ const VOICE_TYPES: Record<string, string> = {
 };
 
 /**
+ * 生成火山引擎签名
+ * 参考: https://www.volcengine.com/docs/6369/67269
+ */
+function generateVolcengineSignature(
+  method: string,
+  path: string,
+  query: Record<string, string>,
+  body: string,
+  accessKey: string,
+  secretKey: string
+): { authorization: string; xDate: string } {
+  const now = new Date();
+  const xDate = now.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  const shortDate = xDate.substring(0, 8);
+
+  // 构建查询字符串
+  const sortedQuery = Object.keys(query)
+    .sort()
+    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(query[key])}`)
+    .join("&");
+
+  // 构建 CanonicalRequest
+  const hashedPayload = crypto.createHash("sha256").update(body).digest("hex");
+  const canonicalHeaders = `content-type:application/json\nhost:${VOLCENGINE_HOST}\nx-content-sha256:${hashedPayload}\nx-date:${xDate}\n`;
+  const signedHeaders = "content-type;host;x-content-sha256;x-date";
+  const canonicalRequest = [
+    method.toUpperCase(),
+    path,
+    sortedQuery,
+    canonicalHeaders,
+    signedHeaders,
+    hashedPayload,
+  ].join("\n");
+
+  // 构建 StringToSign
+  const algorithm = "HMAC-SHA256";
+  const credentialScope = `${shortDate}/${VOLCENGINE_REGION}/${VOLCENGINE_SERVICE}/request`;
+  const hashedCanonicalRequest = crypto
+    .createHash("sha256")
+    .update(canonicalRequest)
+    .digest("hex");
+  const stringToSign = [
+    algorithm,
+    xDate,
+    credentialScope,
+    hashedCanonicalRequest,
+  ].join("\n");
+
+  // 计算签名
+  const kDate = crypto
+    .createHmac("sha256", secretKey)
+    .update(shortDate)
+    .digest();
+  const kRegion = crypto
+    .createHmac("sha256", kDate)
+    .update(VOLCENGINE_REGION)
+    .digest();
+  const kService = crypto
+    .createHmac("sha256", kRegion)
+    .update(VOLCENGINE_SERVICE)
+    .digest();
+  const kSigning = crypto
+    .createHmac("sha256", kService)
+    .update("request")
+    .digest();
+  const signature = crypto
+    .createHmac("sha256", kSigning)
+    .update(stringToSign)
+    .digest("hex");
+
+  // 构建 Authorization
+  const authorization = `${algorithm} Credential=${accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  return { authorization, xDate };
+}
+
+/**
+ * 调用火山引擎 API
+ */
+async function callVolcengineAPI(
+  action: string,
+  reqKey: string,
+  payload: Record<string, any>
+): Promise<any> {
+  const path = "/";
+  const query: Record<string, string> = {
+    Action: action,
+    Version: VOLCENGINE_VERSION,
+  };
+  const body = JSON.stringify({ req_key: reqKey, ...payload });
+
+  const { authorization, xDate } = generateVolcengineSignature(
+    "POST",
+    path,
+    query,
+    body,
+    VOLCENGINE_ACCESS_KEY,
+    VOLCENGINE_SECRET_KEY
+  );
+
+  const url = `https://${VOLCENGINE_HOST}/?Action=${action}&Version=${VOLCENGINE_VERSION}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Host: VOLCENGINE_HOST,
+      "X-Date": xDate,
+      Authorization: authorization,
+    },
+    body,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`火山引擎API调用失败: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  
+  if (data.ResponseMetadata?.Error) {
+    throw new Error(
+      `火山引擎API错误: ${data.ResponseMetadata.Error.Code} - ${data.ResponseMetadata.Error.Message}`
+    );
+  }
+
+  return data;
+}
+
+/**
+ * 调用 TTS 生成音频
+ */
+async function generateTTS(
+  script: string,
+  voiceStyle: string
+): Promise<{ audioUrl: string; duration: number }> {
+  const voiceType = VOICE_TYPES[voiceStyle] || VOICE_TYPES.female_gentle;
+
+  const ttsPayload = {
+    app: {
+      appid: process.env.VOLCENGINE_TTS_APP_ID || "",
+      token: process.env.VOLCENGINE_TTS_TOKEN || "",
+      cluster: "volcano_tts",
+    },
+    user: { uid: "digital_human_user" },
+    audio: {
+      voice_type: voiceType,
+      encoding: "mp3",
+      speed_ratio: 1.0,
+      volume_ratio: 1.0,
+    },
+    request: {
+      reqid: `req_${Date.now()}`,
+      text: script.trim(),
+      text_type: "plain",
+      operation: "query",
+      with_frontend: 1,
+      frontend_type: "unitTson",
+    },
+  };
+
+  const ttsResponse = await fetch("https://openspeech.bytedance.com/api/v1/tts", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer; ${process.env.VOLCENGINE_TTS_TOKEN || ""}`,
+    },
+    body: JSON.stringify(ttsPayload),
+  });
+
+  if (!ttsResponse.ok) {
+    throw new Error(`TTS API调用失败: ${ttsResponse.status}`);
+  }
+
+  const ttsData = await ttsResponse.json();
+
+  if (ttsData.code !== 3000 || !ttsData.data) {
+    throw new Error(`TTS合成失败: ${ttsData.message || ttsData.code}`);
+  }
+
+  // 保存音频到临时存储（实际应上传到对象存储）
+  // 这里返回 base64 数据 URL
+  const audioUrl = `data:audio/mp3;base64,${ttsData.data}`;
+  const duration = Math.ceil(script.length / 4.5); // 预估时长
+
+  return { audioUrl, duration };
+}
+
+/**
  * 数字人视频生成 API
  * POST /api/digital-human/generate
- * 
+ *
  * Body: {
- *   portraitImage: string,     // 人像图片URL或base64
+ *   portraitImage: string,     // 人像图片URL
  *   script: string,            // 口播文案
  *   voiceStyle: string,        // 声音风格
  *   motionStyle: string,       // 动作风格
@@ -46,9 +237,9 @@ export async function POST(request: NextRequest) {
       portraitImage,
       script,
       voiceStyle = "female_gentle",
-      motionStyle = "friendly",
+      motionStyle = "natural",
       backgroundImage,
-      aspectRatio = "9:16"
+      aspectRatio = "9:16",
     } = body;
 
     // 参数验证
@@ -66,123 +257,84 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 确保目录存在
-    if (!existsSync(AUDIO_DIR)) {
-      mkdirSync(AUDIO_DIR, { recursive: true });
-    }
-    if (!existsSync(VIDEO_DIR)) {
-      mkdirSync(VIDEO_DIR, { recursive: true });
-    }
-
     console.log(`[数字人] 开始生成，文案长度: ${script.length}`);
 
     // ==========================================
-    // 第一步：调用TTS生成音频
+    // 第一步：生成 TTS 音频
     // ==========================================
-    const voiceType = VOICE_TYPES[voiceStyle] || VOICE_TYPES.female_gentle;
-    
-    const ttsPayload = {
-      app: {
-        appid: process.env.VOLCENGINE_TTS_APP_ID || "",
-        token: process.env.VOLCENGINE_TTS_TOKEN || "",
-        cluster: "volcano_tts"
-      },
-      user: { uid: "digital_human_user" },
-      audio: {
-        voice_type: voiceType,
-        encoding: "mp3",
-        speed_ratio: 1.0,
-        volume_ratio: 1.0,
-      },
-      request: {
-        reqid: `req_${Date.now()}`,
-        text: script.trim(),
-        text_type: "plain",
-        operation: "query",
-        with_frontend: 1,
-        frontend_type: "unitTson"
+    console.log("[数字人] 步骤1: 生成TTS音频...");
+    const { audioUrl, duration } = await generateTTS(script, voiceStyle);
+    console.log(`[数字人] 音频已生成，预估时长: ${duration}秒`);
+
+    // ==========================================
+    // 第二步：主体识别 (Person Detect)
+    // ==========================================
+    console.log("[数字人] 步骤2: 主体识别...");
+    const personDetectResult = await callVolcengineAPI(
+      "CVSyncToCVSubmitTask",
+      "seehair_sdk_person_detect",
+      {
+        image_url: portraitImage,
       }
+    );
+
+    const subjectInfo = personDetectResult.Data?.subject_info;
+    if (!subjectInfo) {
+      throw new Error("主体识别失败：未检测到人物");
+    }
+    console.log("[数字人] 主体识别完成");
+
+    // ==========================================
+    // 第三步：主体检测 (Detection)
+    // ==========================================
+    console.log("[数字人] 步骤3: 主体检测...");
+    const detectionResult = await callVolcengineAPI(
+      "CVSyncToCVSubmitTask",
+      "omni_human_detection",
+      {
+        image_url: portraitImage,
+        subject_info: subjectInfo,
+      }
+    );
+
+    const detectionInfo = detectionResult.Data?.detection_info;
+    if (!detectionInfo) {
+      throw new Error("主体检测失败");
+    }
+    console.log("[数字人] 主体检测完成");
+
+    // ==========================================
+    // 第四步：视频生成
+    // ==========================================
+    console.log("[数字人] 步骤4: 提交视频生成任务...");
+    const motionMode = MOTION_STYLES[motionStyle] || MOTION_STYLES.natural;
+
+    const videoPayload: Record<string, any> = {
+      audio_url: audioUrl,
+      image_url: portraitImage,
+      subject_info: subjectInfo,
+      detection_info: detectionInfo,
+      resolution: aspectRatio === "9:16" ? "720p" : "720p",
+      motion_mode: motionMode,
     };
 
-    const ttsResponse = await fetch("https://openspeech.bytedance.com/api/v1/tts", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer; ${process.env.VOLCENGINE_TTS_TOKEN || ""}`
-      },
-      body: JSON.stringify(ttsPayload)
-    });
-
-    if (!ttsResponse.ok) {
-      console.error("[TTS] API调用失败:", ttsResponse.status);
-      return NextResponse.json(
-        { success: false, error: "语音合成失败" },
-        { status: 500 }
-      );
+    // 添加背景图片（可选）
+    if (backgroundImage) {
+      videoPayload.background_url = backgroundImage;
     }
 
-    const ttsData = await ttsResponse.json();
-    
-    if (ttsData.code !== 3000 || !ttsData.data) {
-      console.error("[TTS] 合成失败:", ttsData);
-      return NextResponse.json(
-        { success: false, error: `语音合成失败: ${ttsData.message || ttsData.code}` },
-        { status: 500 }
-      );
+    const videoResult = await callVolcengineAPI(
+      "CVSyncToCVSubmitTask",
+      "omni_human_v1.5",
+      videoPayload
+    );
+
+    const taskId = videoResult.Data?.task_id;
+    if (!taskId) {
+      throw new Error("视频生成任务提交失败：未获取到任务ID");
     }
 
-    // 保存音频文件
-    const audioBuffer = Buffer.from(ttsData.data, "base64");
-    const audioFilename = `audio_${Date.now()}.mp3`;
-    const audioPath = join(AUDIO_DIR, audioFilename);
-    writeFileSync(audioPath, audioBuffer);
-    
-    console.log(`[数字人] 音频已生成: ${audioPath}, 大小: ${audioBuffer.length} bytes`);
-
-    // ==========================================
-    // 第二步：调用火山引擎OmniHuman API
-    // ==========================================
-    
-    // 获取动作提示词
-    const motionPrompt = MOTION_STYLES[motionStyle] || MOTION_STYLES.friendly;
-    
-    // 构建OmniHuman请求
-    // 注意：这是基于火山引擎API文档的结构，实际接入时需要根据最新文档调整
-    const omniHumanPayload = {
-      // 音频输入
-      audio: {
-        type: "url",  // 或 "base64"
-        url: `/api/audio/${audioFilename}`  // 本地音频URL
-      },
-      // 人像图片输入
-      image: {
-        type: portraitImage.startsWith("data:") ? "base64" : "url",
-        url: portraitImage.startsWith("data:") ? undefined : portraitImage,
-        base64: portraitImage.startsWith("data:") ? portraitImage.split(",")[1] : undefined
-      },
-      // 背景图片（可选）
-      background: backgroundImage ? {
-        type: backgroundImage.startsWith("data:") ? "base64" : "url",
-        url: backgroundImage.startsWith("data:") ? undefined : backgroundImage,
-        base64: backgroundImage.startsWith("data:") ? backgroundImage.split(",")[1] : undefined
-      } : undefined,
-      // 动作控制
-      motion_prompt: motionPrompt,
-      // 视频参数
-      video_config: {
-        aspect_ratio: aspectRatio,
-        fps: 25,
-        quality: "high"
-      }
-    };
-
-    // TODO: 实际调用火山引擎OmniHuman API
-    // 目前返回模拟响应，等待实际API接入
-    
-    // 模拟任务ID
-    const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    
-    console.log(`[数字人] 任务已提交: ${taskId}`);
+    console.log(`[数字人] 视频生成任务已提交: ${taskId}`);
 
     // ==========================================
     // 返回任务信息
@@ -190,41 +342,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       task_id: taskId,
-      audio_url: `/api/audio/${audioFilename}`,
-      audio_duration: Math.ceil(script.length / 4.5),  // 预估时长
+      audio_duration: duration,
       status: "processing",
-      message: "数字人视频生成任务已提交，请轮询查询状态"
+      message: "数字人视频生成任务已提交，请轮询查询状态",
     });
-
-    /* 实际API调用示例（待接入时使用）
-    const omniHumanResponse = await fetch("https://api.volcengine.com/omnihuman/v1/generate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${VOLCENGINE_ACCESS_KEY}`,
-        "X-Date": new Date().toISOString(),
-      },
-      body: JSON.stringify(omniHumanPayload)
-    });
-
-    if (!omniHumanResponse.ok) {
-      console.error("[OmniHuman] API调用失败:", omniHumanResponse.status);
-      return NextResponse.json(
-        { success: false, error: "数字人生成失败" },
-        { status: 500 }
-      );
-    }
-
-    const omniData = await omniHumanResponse.json();
-    
-    return NextResponse.json({
-      success: true,
-      task_id: omniData.task_id,
-      status: omniData.status || "processing",
-      message: "数字人视频生成任务已提交"
-    });
-    */
-
   } catch (error) {
     console.error("[数字人] 生成异常:", error);
     return NextResponse.json(
