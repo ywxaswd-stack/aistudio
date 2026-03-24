@@ -204,11 +204,11 @@ async function generateTTS(
     app: {
       appid: appId,
       token: token,
-      cluster: "volcano_mega",  // 豆包语音合成模型2.0集群
+      cluster: "volcano_tts",  // 通用TTS集群（字符版尝试）
     },
     user: { uid: "user_001" },
     audio: {
-      voice_type: "zh_female_vv_uranus_bigtts",  // vivi 2.0 通用音色
+      voice_type: "BV700_V2_streaming",  // 通用音色
       encoding: "mp3",
       speed_ratio: 1.0,
       volume_ratio: 1.0,
