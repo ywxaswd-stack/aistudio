@@ -301,7 +301,8 @@ export async function POST(request: NextRequest) {
     // ========== 测试用：硬编码公网测试图片 ==========
     // 验证流程时使用这个，图片必须是公网可访问的
     const TEST_MODE = true;
-    const testImageUrl = "https://lf3-static.bytednsdoc.com/obj/eden-cn/vhaeh7vpxu/demo_portrait.jpg";
+    // 使用w3schools的测试图片（已验证可访问）
+    const testImageUrl = "https://www.w3schools.com/css/img_5terre.jpg";
     const imageUrl = TEST_MODE ? testImageUrl : portraitImage;
     console.log(`[数字人] 使用图片URL: ${imageUrl} (测试模式: ${TEST_MODE})`);
     // ========== 测试用 END ==========
