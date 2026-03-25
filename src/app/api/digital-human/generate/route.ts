@@ -6,7 +6,7 @@ const VOLCENGINE_ACCESS_KEY = process.env.VOLCENGINE_ACCESS_KEY || "";
 const VOLCENGINE_SECRET_KEY = process.env.VOLCENGINE_SECRET_KEY || "";
 
 // 火山引擎 API 配置
-const VOLCENGINE_SERVICE = "cv";
+const VOLCENGINE_SERVICE = "visual";
 const VOLCENGINE_REGION = "cn-north-1";
 const VOLCENGINE_HOST = "visual.volcengineapi.com";
 const VOLCENGINE_VERSION = "2022-08-31";
@@ -78,26 +78,26 @@ function generateVolcengineSignature(
     .join("&");
 
   // 2. 构建 Canonical Headers (必须包含 host, x-content-sha256, x-date)
-  // 注意：每一行最后都有一个 \n
   const canonicalHeaders = `content-type:application/json\nhost:${VOLCENGINE_HOST}\nx-content-sha256:${hashedPayload}\nx-date:${xDate}\n`;
   const signedHeaders = "content-type;host;x-content-sha256;x-date";
 
-  // 3. 构建 Canonical Request (严格换行)
-  // 修正：使用显式拼接方式，避免 join("\n") 产生的冗余换行
-  const canonicalRequestCorrect = 
-    method.toUpperCase() + "\n" +
-    path + "\n" +
-    sortedQuery + "\n" +
-    canonicalHeaders + "\n" + // Headers 块后还有一个额外换行
-    signedHeaders + "\n" +
-    hashedPayload;
+  // 3. 构建 Canonical Request (简化版，减少换行符错误风险)
+  // CanonicalRequest 的各部分之间只有一个 \n
+  const canonicalRequest = [
+    method.toUpperCase(),
+    path,
+    sortedQuery,
+    canonicalHeaders, // 这里末尾已经带了一个 \n
+    signedHeaders,
+    hashedPayload
+  ].join("\n");
 
   // 4. 构建 StringToSign
   const algorithm = "HMAC-SHA256";
   const credentialScope = `${shortDate}/${VOLCENGINE_REGION}/${VOLCENGINE_SERVICE}/request`;
   const hashedCanonicalRequest = crypto
     .createHash("sha256")
-    .update(canonicalRequestCorrect)
+    .update(canonicalRequest)
     .digest("hex");
     
   const stringToSign = [
@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
     // ==========================================
     // 第一步：生成 TTS 音频
     // ==========================================
-    console.log("[数字人] 步骤1: 生成TTS音频...");
+    console.log("[数字人] 步骤1: TTS音频已准备好");
     const audioPath = await generateTTS(script, voiceStyle);
     
     // TODO: 将本地音频文件上传到对象存储，获取公网URL
@@ -312,66 +312,20 @@ export async function POST(request: NextRequest) {
     console.log(`[数字人] 音频已生成，使用公网URL: ${audioUrl}，预估时长: ${duration}秒`);
 
     // ==========================================
-    // 第二步：主体识别 (Person Detect)
+    // 直接提交 OmniHuman 1.5 任务（跳过识别和检测）
     // ==========================================
-    console.log("[数字人] 步骤2: 主体识别...");
-    const personDetectResult = await callVolcengineAPI(
-      "CVProcess",
-      "seehair_sdk_person_detect",
-      {
-        image_url: portraitImage,
-      }
-    );
-
-    const subjectInfo = personDetectResult.Data?.subject_info;
-    if (!subjectInfo) {
-      throw new Error("主体识别失败：未检测到人物");
-    }
-    console.log("[数字人] 主体识别完成");
-
-    // ==========================================
-    // 第三步：主体检测 (Detection)
-    // ==========================================
-    console.log("[数字人] 步骤3: 主体检测...");
-    const detectionResult = await callVolcengineAPI(
-      "CVProcess",
-      "omni_human_detection",
-      {
-        image_url: portraitImage,
-        subject_info: subjectInfo,
-      }
-    );
-
-    const detectionInfo = detectionResult.Data?.detection_info;
-    if (!detectionInfo) {
-      throw new Error("主体检测失败");
-    }
-    console.log("[数字人] 主体检测完成");
-
-    // ==========================================
-    // 第四步：视频生成
-    // ==========================================
-    console.log("[数字人] 步骤4: 提交视频生成任务...");
-    const motionMode = MOTION_STYLES[motionStyle] || MOTION_STYLES.natural;
-
-    const videoPayload: Record<string, any> = {
-      audio_url: audioUrl,
-      image_url: portraitImage,
-      subject_info: subjectInfo,
-      detection_info: detectionInfo,
-      resolution: aspectRatio === "9:16" ? "720p" : "720p",
-      motion_mode: motionMode,
-    };
-
-    // 添加背景图片（可选）
-    if (backgroundImage) {
-      videoPayload.background_url = backgroundImage;
-    }
-
+    console.log("[数字人] 正在提交 OmniHuman 1.5 任务...");
+    
     const videoResult = await callVolcengineAPI(
       "CVSubmitTask",
-      "omni_human_v1.5",
-      videoPayload
+      "omni_human_v1_5",
+      {
+        image_url: portraitImage,
+        audio_url: audioUrl,
+        fps: 25,
+        resolution: aspectRatio === "9:16" ? "720p" : "720p",
+        // 1.5版本会自动处理主体检测，不需要传 subject_info
+      }
     );
 
     const taskId = videoResult.Data?.task_id;
