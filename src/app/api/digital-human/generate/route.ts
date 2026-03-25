@@ -313,19 +313,17 @@ export async function POST(request: NextRequest) {
     console.log(`[数字人] 音频已生成，使用公网URL: ${audioUrl}，预估时长: ${duration}秒`);
 
     // ==========================================
-    // 直接提交 OmniHuman 1.5 任务（跳过识别和检测）
+    // 直接提交 OmniHuman 任务
     // ==========================================
-    console.log("[数字人] 正在提交 OmniHuman 1.5 任务...");
+    console.log("[数字人] 正在提交 OmniHuman 任务...");
     
     const videoResult = await callVolcengineAPI(
-      "CVSubmitTask",
-      "omni_human_v1_5",
+      "CVSyncToCVSubmitTask",
+      "omni_human_v1.5",
       {
         image_url: portraitImage,
         audio_url: audioUrl,
-        fps: 25,
         resolution: aspectRatio === "9:16" ? "720p" : "720p",
-        // 1.5版本会自动处理主体检测，不需要传 subject_info
       }
     );
 
