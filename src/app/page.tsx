@@ -1238,26 +1238,9 @@ export default function Home() {
 
                       setLoading(true);
                       try {
-                        // 先上传图片到对象存储，获取公网 URL
-                        let publicImageUrl = portraitImage;
-                        
-                        // 如果是 Data URL (本地图片)，先上传
-                        if (portraitImage.startsWith("data:")) {
-                          toast.info("正在上传图片...");
-                          const uploadRes = await fetch("/api/upload/image", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ image: portraitImage })
-                          });
-                          const uploadData = await uploadRes.json();
-                          if (!uploadData.success) {
-                            toast.error("图片上传失败: " + uploadData.error);
-                            setLoading(false);
-                            return;
-                          }
-                          publicImageUrl = uploadData.url;
-                          console.log("[前端] 图片已上传, URL:", publicImageUrl);
-                        }
+                        // 直接使用图片URL（测试模式下后端会替换为测试图片）
+                        // 只有当后端关闭测试模式时，才需要上传图片获取公网URL
+                        const publicImageUrl = portraitImage;
 
                         const res = await fetch("/api/digital-human/generate", {
                           method: "POST",
