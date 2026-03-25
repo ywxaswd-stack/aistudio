@@ -313,13 +313,13 @@ export async function POST(request: NextRequest) {
     console.log(`[数字人] 音频已生成，使用公网URL: ${audioUrl}，预估时长: ${duration}秒`);
 
     // ==========================================
-    // 直接提交 OmniHuman 任务
+    // 直接提交 OmniHuman 1.5 任务
     // ==========================================
-    console.log("[数字人] 正在提交 OmniHuman 任务...");
+    console.log("[数字人] 正在提交 OmniHuman 1.5 任务...");
     
     const videoResult = await callVolcengineAPI(
       "CVSyncToCVSubmitTask",
-      "omni_human_v1.5",
+      "omni_human_1.5",
       {
         image_url: portraitImage,
         audio_url: audioUrl,
