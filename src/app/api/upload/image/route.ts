@@ -21,6 +21,10 @@ export async function POST(request: NextRequest) {
     let contentType = "image/jpeg";
     let fileName = `digital-human/${Date.now()}.jpg`;
 
+    console.log("[上传] 接收请求, image类型:", typeof image, "imageUrl类型:", typeof imageUrl);
+    console.log("[上传] image是否以data:开头:", image?.startsWith?.("data:"));
+    console.log("[上传] image前50字符:", image?.substring?.(0, 50));
+
     if (image) {
       // 处理 Data URL (data:image/...;base64,...)
       const matches = image.match(/^data:([^;]+);base64,(.+)$/);
@@ -76,6 +80,7 @@ export async function POST(request: NextRequest) {
     });
 
     console.log("[上传] 生成访问 URL:", url);
+    console.log("[上传] URL 是否以 data: 开头:", url.startsWith("data:"));
 
     return NextResponse.json({
       success: true,
