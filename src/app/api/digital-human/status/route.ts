@@ -160,11 +160,12 @@ export async function GET(request: NextRequest) {
 
     // 查询任务状态
     const result = await queryTaskStatus(taskId);
+    const resultData = result.ResponseMetadata?.Result;
 
-    const status = result.Data?.status;
-    const videoUrl = result.Data?.video_url;
-    const progress = result.Data?.progress || 0;
-    const errorMessage = result.Data?.error_message;
+    const status = resultData?.status;
+    const videoUrl = resultData?.video_url;
+    const progress = resultData?.progress || 0;
+    const errorMessage = resultData?.error_message;
 
     // 状态映射
     // 火山引擎状态: PENDING, RUNNING, SUCCESS, FAILED
