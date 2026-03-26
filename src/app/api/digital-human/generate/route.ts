@@ -340,9 +340,11 @@ export async function POST(request: NextRequest) {
     console.log("[数字人] 步骤1: TTS音频已准备好");
     const audioPath = await generateTTS(script, voiceStyle);
     
-    // TODO: 将本地音频文件上传到对象存储，获取公网URL
-    // 暂时使用测试音频URL进行验证
-    const audioUrl = "https://LF3-static.bytednsdoc.com/obj/eden-cn/vhaeh7vpxu/demo.mp3";
+    const audioFileName = `audio_${Date.now()}.mp3`;
+    const audioUploadDir = join(process.cwd(), 'public', 'uploads');
+    const audioPublicPath = join(audioUploadDir, audioFileName);
+    copyFileSync(audioPath, audioPublicPath);
+    const audioUrl = `http://130.211.240.194:5000/uploads/${audioFileName}`;
     const duration = Math.ceil(script.length / 4.5); // 预估时长
     console.log(`[数字人] 音频已生成，使用公网URL: ${audioUrl}，预估时长: ${duration}秒`);
 
