@@ -329,6 +329,7 @@ export default function Home() {
   const [portraitImage, setPortraitImage] = useState<string | null>(null); // 人像图片
   const [motionStyle, setMotionStyle] = useState<string>("friendly"); // 动作风格
   const [voiceStyle, setVoiceStyle] = useState<string>("zh_female_vv_uranus_bigtts"); // 声音风格
+  const [digitalHumanPrompt, setDigitalHumanPrompt] = useState<string>(""); // 提示词
   const [digitalHumanTaskId, setDigitalHumanTaskId] = useState<string | null>(null); // 数字人任务ID
   const [digitalHumanVideo, setDigitalHumanVideo] = useState<string | null>(null); // 生成的数字人视频
   
@@ -1194,6 +1195,18 @@ export default function Home() {
                     </div>
                   </div>
 
+                  {/* 画面提示词（可选） */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">画面提示词（可选）</label>
+                    <Textarea
+                      placeholder="描述画面风格、动作、背景等，例如：自然说话，轻微手势，专业商务风格"
+                      value={digitalHumanPrompt}
+                      onChange={(e) => setDigitalHumanPrompt(e.target.value)}
+                      className="min-h-[80px]"
+                    />
+                    <p className="text-xs text-gray-500">支持中文，建议300字以内</p>
+                  </div>
+
                   {/* 生成按钮 */}
                   <Button
                     onClick={async () => {
@@ -1216,6 +1229,7 @@ export default function Home() {
                             script: script.script,
                             voiceStyle,
                             motionStyle,
+                            prompt: digitalHumanPrompt,
                             aspectRatio
                           })
                         });

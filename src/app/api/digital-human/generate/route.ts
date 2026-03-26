@@ -283,6 +283,7 @@ export async function POST(request: NextRequest) {
       motionStyle = "natural",
       backgroundImage,
       aspectRatio = "9:16",
+      prompt,
     } = body;
 
     // 参数验证
@@ -416,6 +417,11 @@ export async function POST(request: NextRequest) {
     // 如果有 role_id，添加到请求中
     if (roleId) {
       videoPayload.role_id = roleId;
+    }
+
+    // 如果有提示词，添加到请求中
+    if (prompt && prompt.trim()) {
+      videoPayload.prompt = prompt.trim();
     }
 
     const videoResult = await callVolcengineAPI(
