@@ -109,7 +109,7 @@ const getSystemPrompt = (duration: number) => {
   return `你是一位专业的短视频爆款标题策划专家，精通薛辉短视频架构方法论。
 
 【核心任务】
-基于用户提供的行业、视频目的和钩子词根，生成3个完整的爆款选题方案。
+基于用户提供的行业、视频目的和钩子词根，严格生成8个完整的爆款选题方案。
 每个选题方案需包含7种不同风格的标题变体（对应7种用户心理）。
 
 【7种标题风格定义】
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
 【选中的钩子词根】
 ${hooksList.map((h: string) => `- ${h}`).join('\n')}
 
-请基于以上信息，生成3个完整的爆款选题方案，每个方案包含7种不同风格的标题变体。选题要与"${userIndustry}"行业相关，引导用户"${videoGoal}"。`;
+请基于以上信息，严格生成8个完整的爆款选题方案，每个方案包含7种不同风格的标题变体。必须是8个，不能多也不能少。选题要与"${userIndustry}"行业相关，引导用户"${videoGoal}"。`;
 
     // 调用Gemini
     const responseText = await callGemini(
@@ -204,7 +204,11 @@ ${hooksList.map((h: string) => `- ${h}`).join('\n')}
 
     return NextResponse.json({
       success: true,
-      topics: topicsData.topics || [],
+      topics: (topicsData.topics || []).map((t: any, i: number) => ({ 
+        ...t, 
+        id: t.id || `topic_${i}`,
+        is_selected: false 
+      })),
       titleStyles: TITLE_STYLES
     });
   } catch (error) {
@@ -251,7 +255,7 @@ export async function PUT(request: NextRequest) {
 【选中的钩子词根】
 ${hooksList.map((h: string) => `- ${h}`).join('\n')}
 
-请生成3个完全不同的爆款选题方案（与之前的不同），每个方案包含7种不同风格的标题变体。选题要与"${userIndustry}"行业相关，引导用户"${videoGoal}"。`;
+请严格生成8个完全不同的爆款选题方案（与之前的不同），每个方案包含7种不同风格的标题变体。必须是8个。选题要与"${userIndustry}"行业相关，引导用户"${videoGoal}"。`;
 
     // 调用Gemini
     const responseText = await callGemini(
@@ -275,7 +279,11 @@ ${hooksList.map((h: string) => `- ${h}`).join('\n')}
 
     return NextResponse.json({
       success: true,
-      topics: topicsData.topics || [],
+      topics: (topicsData.topics || []).map((t: any, i: number) => ({ 
+        ...t, 
+        id: t.id || `topic_${i}`,
+        is_selected: false 
+      })),
       titleStyles: TITLE_STYLES
     });
   } catch (error) {
