@@ -27,14 +27,15 @@ model SmsCode {
 }
 
 model Order {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  wxOrderId String   @unique
-  amount    Int
-  seconds   Int
-  status    String   @default("pending")
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  transferNo String?  // 支付宝转账单号
+  amount     Int      // 支付金额（分）
+  seconds    Int      // 购买秒数
+  status     String   @default("pending") // pending/confirmed/rejected
+  note       String?  // 备注
+  createdAt  DateTime @default(now())
 }
 
 model Video {
