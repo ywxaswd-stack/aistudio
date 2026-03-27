@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { writeFileSync, mkdirSync, existsSync } from "fs";
+import { writeFileSync, mkdirSync, existsSync, copyFileSync } from "fs";
 import { join } from "path";
 import { getUserFromRequest } from "@/lib/auth";
 import { PrismaClient } from "@prisma/client";
