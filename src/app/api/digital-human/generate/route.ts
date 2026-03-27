@@ -15,12 +15,39 @@ const VOLCENGINE_HOST = "visual.volcengineapi.com";
 const VOLCENGINE_VERSION = "2022-08-31";
 
 // 动作风格映射（中文 -> 英文描述）
-const MOTION_STYLES: Record<string, string> = {
-  natural: "natural speaking with subtle body movements, relaxed posture",
-  gesture: "energetic hand gestures while speaking, enthusiastic presentation",
-  lively: "lively and animated movements, dynamic presentation style",
-  calm: "calm and composed demeanor, steady and professional posture",
-  professional: "professional presentation style, confident body language"
+const MOTION_STYLES: Record<string, { prompt: string; tip: string }> = {
+  shopping: {
+    prompt: "镜头跟随，人物自信地走向镜头，举起右手展示产品，充满活力地对着镜头说话，眼神热情有力。",
+    tip: "建议拍摄时手持产品，效果更佳"
+  },
+  professional: {
+    prompt: "人物保持稳定站姿，面朝正前方说话，手势自然配合讲解内容，神情专注认真，镜头缓缓推进聚焦到面部。",
+    tip: "适合正装或商务装，背景简洁为佳"
+  },
+  friendly: {
+    prompt: "人物放松地对着镜头说话，轻微点头，嘴角带着亲切微笑，肢体自然随意，营造轻松聊天氛围。",
+    tip: "适合生活化场景，穿着休闲自然"
+  },
+  excited: {
+    prompt: "人物先做出惊喜表情，然后迅速转向镜头，双手张开抬起头，充满激情地说话，眉飞色舞，情绪高涨。",
+    tip: "适合大促活动，建议配合节奏感强的文案"
+  },
+  authority: {
+    prompt: "人物挺拔站立，面向正前方，神情严肃专业，手势稳重有力，缓缓开口说话，镜头保持稳定。",
+    tip: "适合正装，建议选用简洁正式背景"
+  },
+  news: {
+    prompt: "人物正对镜头，保持播报坐姿，神情沉稳自然，先整理一下衣领，然后对着镜头开口播报，语态严谨。",
+    tip: "建议坐姿拍摄，上半身清晰入镜"
+  },
+  funny: {
+    prompt: "人物先夸张地做出惊讶表情，眉头高挑，然后对着镜头说话，配合俏皮的手势，嘴角带着笑意。",
+    tip: "适合娱乐搞笑内容，表情夸张一些效果更好"
+  },
+  gentle: {
+    prompt: "人物神情温柔，对着镜头轻声说话，动作舒缓，轻微侧头微笑，镜头缓缓推进，聚焦到人物面部。",
+    tip: "适合美妆、健康、情感类内容"
+  },
 };
 
 // 豆包语音合成模型2.0音色列表（字符版，用户实际开通的音色）
@@ -420,6 +447,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 如果有提示词，添加到请求中
+    // 动作风格转为 prompt
+    const motionConfig = MOTION_STYLES[motionStyle];
+    if (motionConfig && !prompt) {
+      // 用户没有自定义 prompt 时，使用风格预设
+      videoPayload.prompt = motionConfig.prompt;
+    }
+
     if (prompt && prompt.trim()) {
       videoPayload.prompt = prompt.trim();
     }
@@ -447,6 +481,7 @@ export async function POST(request: NextRequest) {
       audio_duration: duration,
       status: "processing",
       message: "数字人视频生成任务已提交，请轮询查询状态",
+      motion_tip: MOTION_STYLES[motionStyle]?.tip || null, // 给前端展示的拍摄建议
     });
   } catch (error) {
     console.error("[数字人] 生成异常:", error);
