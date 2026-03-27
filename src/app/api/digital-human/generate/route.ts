@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { writeFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
+import { getUserFromRequest } from "@/lib/auth";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // 火山引擎配置
 const VOLCENGINE_ACCESS_KEY = process.env.VOLCENGINE_ACCESS_KEY || "";
@@ -302,6 +306,12 @@ async function generateTTS(
  */
 export async function POST(request: NextRequest) {
   try {
+    // 登录检查
+    const userInfo = getUserFromRequest(request);
+    if (!userInfo) {
+      return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       portraitImage,
@@ -362,12 +372,24 @@ export async function POST(request: NextRequest) {
 
     console.log(`[数字人] 开始生成，文案长度: ${script.length}`);
 
+    // 预估秒数
+    const estimatedSeconds = Math.ceil(script.length / 4.5);
+
+    // 余额检查
+    const user = await prisma.user.findUnique({ where: { id: userInfo.userId } });
+    if (!user || user.seconds < estimatedSeconds) {
+      return NextResponse.json({
+        success: false,
+        error: `余额不足，需要 ${estimatedSeconds} 秒，当前剩余 ${user?.seconds || 0} 秒，请先充值`
+      }, { status: 400 });
+    }
+
     // ==========================================
     // 第一步：生成 TTS 音频
     // ==========================================
     console.log("[数字人] 步骤1: TTS音频已准备好");
     const audioPath = await generateTTS(script, voiceStyle);
-    
+
     const audioFileName = `audio_${Date.now()}.mp3`;
     const audioUploadDir = join(process.cwd(), 'public', 'uploads');
     const audioPublicPath = join(audioUploadDir, audioFileName);
@@ -473,6 +495,22 @@ export async function POST(request: NextRequest) {
     console.log(`[数字人] 视频生成任务已提交: ${taskId}`);
 
     // ==========================================
+    // 扣费和记录
+    // ==========================================
+    await prisma.user.update({
+      where: { id: userInfo.userId },
+      data: { seconds: { decrement: estimatedSeconds } }
+    });
+    await prisma.video.create({
+      data: {
+        userId: userInfo.userId,
+        taskId: taskId,
+        duration: estimatedSeconds,
+        status: "processing"
+      }
+    });
+
+    // ==========================================
     // 返回任务信息
     // ==========================================
     return NextResponse.json({
@@ -482,6 +520,7 @@ export async function POST(request: NextRequest) {
       status: "processing",
       message: "数字人视频生成任务已提交，请轮询查询状态",
       motion_tip: MOTION_STYLES[motionStyle]?.tip || null, // 给前端展示的拍摄建议
+      remaining_seconds: user.seconds - estimatedSeconds,
     });
   } catch (error) {
     console.error("[数字人] 生成异常:", error);
