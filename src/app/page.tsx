@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { 
   Target, Sparkles, Lightbulb, Upload, FileText, Video, Film, Clock,
   CheckCircle2, Loader2, ChevronRight, ChevronLeft, RefreshCw,
-  Play, Download, Trash2, Plus
+  Play, Download, Trash2, Plus, Wand2
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -514,17 +514,28 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                🎬 爆款短视频智能生成
+                爆款短视频智能生成
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 基于薛辉短视频架构方法论 · AI驱动创作
               </p>
             </div>
-            {project && (
-              <Badge variant="outline" className="text-sm">
-                项目ID: {project.id.slice(0, 8)}...
-              </Badge>
-            )}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.location.href = "/image"}
+                className="flex items-center gap-2"
+              >
+                <Wand2 className="w-4 h-4" />
+                AI文生图
+              </Button>
+              {project && (
+                <Badge variant="outline" className="text-sm">
+                  项目ID: {project.id.slice(0, 8)}...
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </header>
