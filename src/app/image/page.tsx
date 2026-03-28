@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -14,6 +14,11 @@ export default function ImagePage() {
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+
+  // 处理 prompt 变化
+  const handlePromptChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setPrompt(e.target.value);
+  }, []);
 
   // 处理图片上传
   const handleImageUpload = (file: File) => {
@@ -189,7 +194,7 @@ export default function ImagePage() {
                 className="w-full h-32 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
                 placeholder="描述你想要的图片，支持中文，例如：一只可爱的猫咪坐在樱花树下，春天氛围，动漫风格"
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={handlePromptChange}
                 maxLength={300}
               />
               <div className="text-xs text-gray-400 text-right">
