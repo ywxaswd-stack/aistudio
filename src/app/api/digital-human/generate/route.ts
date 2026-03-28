@@ -336,10 +336,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 文案字数限制（60秒 * 4.5字/秒 = 270字）
+    if (script.trim().length > 270) {
+      return NextResponse.json(
+        { success: false, error: `文案过长（${script.trim().length}字），请控制在270字以内（约60秒）` },
+        { status: 400 }
+      );
+    }
+
     // ========== 测试用：处理图片URL ==========
     // 如果是 Data URL，先保存到 public/uploads 目录，构造公网 URL
     let imageUrl = portraitImage;
     if (portraitImage.startsWith('data:')) {
+      // 检查base64图片大小（5MB限制）
+      const base64Size = portraitImage.length * 0.75 / 1024 / 1024;
+      if (base64Size > 5) {
+        return NextResponse.json(
+          { success: false, error: "图片过大，请上传5MB以内的图片" },
+          { status: 400 }
+        );
+      }
       try {
         // 去掉 Base64 头部
         const base64Data = portraitImage.replace(/^data:image\/\w+;base64,/, "");
@@ -393,8 +409,7 @@ export async function POST(request: NextRequest) {
     const audioPublicPath = join(audioUploadDir, audioFileName);
     copyFileSync(audioPath, audioPublicPath);
     const audioUrl = `${process.env.COZE_PROJECT_DOMAIN_DEFAULT || 'http://localhost:5000'}/uploads/${audioFileName}`;
-    const duration = Math.ceil(script.length / 4.5); // 预估时长
-    console.log(`[数字人] 音频已生成，使用公网URL: ${audioUrl}，预估时长: ${duration}秒`);
+    console.log(`[数字人] 音频已生成，使用公网URL: ${audioUrl}，预估时长: ${estimatedSeconds}秒`);
 
     // ==========================================
     // 第二步：主体识别
@@ -514,7 +529,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       task_id: taskId,
-      audio_duration: duration,
+      audio_duration: estimatedSeconds,
       status: "processing",
       message: "数字人视频生成任务已提交，请轮询查询状态",
       motion_tip: MOTION_STYLES[motionStyle]?.tip || null, // 给前端展示的拍摄建议
