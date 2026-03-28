@@ -539,6 +539,15 @@ export default function Home() {
                 <FileText className="w-4 h-4" />
                 文案提取
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.location.href = "/mix"}
+                className="flex items-center gap-2"
+              >
+                <Film className="w-4 h-4" />
+                AI混剪
+              </Button>
               {project && (
                 <Badge variant="outline" className="text-sm">
                   项目ID: {project.id.slice(0, 8)}...
