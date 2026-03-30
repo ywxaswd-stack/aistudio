@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Bot, ImageIcon, FileText, Film, Video, Sparkles,
-  ArrowRight, Wallet, User, Zap
+  ArrowRight, Wallet, User, Zap, Upload, Wand2, Play
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,8 +24,8 @@ const FEATURES = [
     title: "数字人",
     desc: "上传照片生成专业口播视频",
     gradient: "from-purple-600 to-pink-600",
-    href: "/",
-    color: "purple"
+    href: "#digital-human",
+    scroll: true
   },
   {
     id: "image",
@@ -34,7 +34,7 @@ const FEATURES = [
     desc: "AI 一句话生成精美图片",
     gradient: "from-blue-600 to-cyan-600",
     href: "/image",
-    color: "blue"
+    scroll: false
   },
   {
     id: "rewrite",
@@ -43,7 +43,7 @@ const FEATURES = [
     desc: "视频转文字一键洗稿改写",
     gradient: "from-green-600 to-emerald-600",
     href: "/rewrite",
-    color: "green"
+    scroll: false
   },
   {
     id: "mix",
@@ -52,7 +52,7 @@ const FEATURES = [
     desc: "多图一键合成短视频加BGM",
     gradient: "from-orange-600 to-amber-600",
     href: "/mix",
-    color: "orange"
+    scroll: false
   },
   {
     id: "video-gen",
@@ -61,7 +61,7 @@ const FEATURES = [
     desc: "文字或图片生成高质量视频",
     gradient: "from-red-600 to-rose-600",
     href: "/video-gen",
-    color: "red"
+    scroll: false
   }
 ];
 
@@ -90,14 +90,8 @@ export default function Home() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      setUserInfo(null);
-      toast.success("已退出登录");
-    } catch (error) {
-      toast.error("退出失败");
-    }
+  const scrollToDigitalHuman = () => {
+    document.getElementById("digital-human")?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
@@ -155,7 +149,7 @@ export default function Home() {
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
           {/* 标题区域 */}
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-6">
               <Sparkles className="w-4 h-4 text-yellow-400" />
               <span className="text-sm text-white/80">AI 驱动创作</span>
@@ -168,42 +162,91 @@ export default function Home() {
             </p>
           </div>
 
-          {/* 功能卡片 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {FEATURES.map((feature, index) => (
-              <Card
-                key={feature.id}
-                onClick={() => feature.href !== "/home" && router.push(feature.href)}
-                className={`group relative overflow-hidden bg-white/5 border-white/10 backdrop-blur-sm hover:scale-[1.02] transition-all duration-300 cursor-pointer ${
-                  index < 3 ? "" : "max-w-[calc(50%-12px)] mx-auto"
-                }`}
-              >
-                {/* 渐变背景 */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-opacity`} />
-                
-                {/* 边框发光效果 */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity blur-xl -z-10`} />
-
-                <div className="relative p-8">
-                  {/* 图标 */}
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                    <feature.icon className="w-7 h-7 text-white" />
+          {/* 数字人操作区域 */}
+          <section id="digital-human" className="max-w-4xl mx-auto mb-16">
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 p-6 border-b border-white/10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                    <Bot className="w-6 h-6 text-white" />
                   </div>
-
-                  {/* 标题 */}
-                  <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
-
-                  {/* 简介 */}
-                  <p className="text-white/60 mb-4">{feature.desc}</p>
-
-                  {/* 箭头 */}
-                  <div className="flex items-center gap-2 text-white/40 group-hover:text-white transition-colors">
-                    <span className="text-sm">立即体验</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">数字人口播</h2>
+                    <p className="text-white/60">上传照片生成专业口播视频</p>
                   </div>
                 </div>
-              </Card>
-            ))}
+              </div>
+              <div className="p-8">
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <div className="flex-1 text-center">
+                    <div className="w-32 h-32 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-dashed border-white/20 flex items-center justify-center">
+                      <Upload className="w-12 h-12 text-white/40" />
+                    </div>
+                    <p className="text-white/60 text-sm">上传人物照片</p>
+                    <Button className="mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-0" onClick={() => toast.info("请在下方填写脚本后生成视频")}>
+                      <Upload className="w-4 h-4 mr-2" />
+                      上传照片
+                    </Button>
+                  </div>
+                  <div className="hidden md:block w-px h-32 bg-white/10" />
+                  <div className="flex-1 text-center">
+                    <div className="w-32 h-32 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-dashed border-white/20 flex items-center justify-center">
+                      <Play className="w-12 h-12 text-white/40" />
+                    </div>
+                    <p className="text-white/60 text-sm">生成数字人视频</p>
+                    <Button className="mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-0" onClick={() => toast.info("请在下方填写脚本后生成视频")}>
+                      <Wand2 className="w-4 h-4 mr-2" />
+                      开始生成
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </section>
+
+          {/* 功能卡片 */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-white text-center mb-6">更多创作工具</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              {FEATURES.map((feature) => (
+                <Card
+                  key={feature.id}
+                  onClick={() => {
+                    if (feature.scroll) {
+                      document.getElementById("digital-human")?.scrollIntoView({ behavior: "smooth" });
+                    } else {
+                      router.push(feature.href);
+                    }
+                  }}
+                  className="group relative overflow-hidden bg-white/5 border-white/10 backdrop-blur-sm hover:scale-[1.02] transition-all duration-300 cursor-pointer min-h-[200px]"
+                >
+                  {/* 渐变背景 */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-opacity`} />
+                  
+                  {/* 边框发光效果 */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity blur-xl -z-10`} />
+
+                  <div className="relative p-6 h-full flex flex-col">
+                    {/* 图标 */}
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                      <feature.icon className="w-6 h-6 text-white" />
+                    </div>
+
+                    {/* 标题 */}
+                    <h3 className="text-lg font-bold text-white mb-2">{feature.title}</h3>
+
+                    {/* 简介 */}
+                    <p className="text-white/60 flex-1">{feature.desc}</p>
+
+                    {/* 箭头 */}
+                    <div className="flex items-center gap-2 text-white/40 group-hover:text-white transition-colors mt-4">
+                      <span className="text-sm">立即体验</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
 
           {/* 底部提示 */}
