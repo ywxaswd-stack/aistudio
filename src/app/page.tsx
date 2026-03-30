@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Bot, ImageIcon, FileText, Film, Video, Sparkles,
-  ArrowRight, Wallet, User, Zap, Upload, Wand2, Play
+  ArrowRight, Wallet, User, Zap
 } from "lucide-react";
-import { toast } from "sonner";
 
 interface UserInfo {
   id: string;
@@ -24,8 +24,7 @@ const FEATURES = [
     title: "数字人",
     desc: "上传照片生成专业口播视频",
     gradient: "from-purple-600 to-pink-600",
-    href: "#digital-human",
-    scroll: true
+    href: "/digital-human"
   },
   {
     id: "image",
@@ -33,8 +32,7 @@ const FEATURES = [
     title: "文生图/图生图",
     desc: "AI 一句话生成精美图片",
     gradient: "from-blue-600 to-cyan-600",
-    href: "/image",
-    scroll: false
+    href: "/image"
   },
   {
     id: "rewrite",
@@ -42,8 +40,7 @@ const FEATURES = [
     title: "文案提取",
     desc: "视频转文字一键洗稿改写",
     gradient: "from-green-600 to-emerald-600",
-    href: "/rewrite",
-    scroll: false
+    href: "/rewrite"
   },
   {
     id: "mix",
@@ -51,8 +48,7 @@ const FEATURES = [
     title: "图片混剪",
     desc: "多图一键合成短视频加BGM",
     gradient: "from-orange-600 to-amber-600",
-    href: "/mix",
-    scroll: false
+    href: "/mix"
   },
   {
     id: "video-gen",
@@ -60,8 +56,7 @@ const FEATURES = [
     title: "AI视频",
     desc: "文字或图片生成高质量视频",
     gradient: "from-red-600 to-rose-600",
-    href: "/video-gen",
-    scroll: false
+    href: "/video-gen"
   }
 ];
 
@@ -88,10 +83,6 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const scrollToDigitalHuman = () => {
-    document.getElementById("digital-human")?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
@@ -162,64 +153,11 @@ export default function Home() {
             </p>
           </div>
 
-          {/* 数字人操作区域 */}
-          <section id="digital-human" className="max-w-4xl mx-auto mb-16">
-            <Card className="bg-white/5 border-white/10 backdrop-blur-sm overflow-hidden">
-              <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 p-6 border-b border-white/10">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                    <Bot className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-white">数字人口播</h2>
-                    <p className="text-white/60">上传照片生成专业口播视频</p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-8">
-                <div className="flex flex-col md:flex-row items-center gap-6">
-                  <div className="flex-1 text-center">
-                    <div className="w-32 h-32 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-dashed border-white/20 flex items-center justify-center">
-                      <Upload className="w-12 h-12 text-white/40" />
-                    </div>
-                    <p className="text-white/60 text-sm">上传人物照片</p>
-                    <Button className="mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-0" onClick={() => toast.info("请在下方填写脚本后生成视频")}>
-                      <Upload className="w-4 h-4 mr-2" />
-                      上传照片
-                    </Button>
-                  </div>
-                  <div className="hidden md:block w-px h-32 bg-white/10" />
-                  <div className="flex-1 text-center">
-                    <div className="w-32 h-32 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-dashed border-white/20 flex items-center justify-center">
-                      <Play className="w-12 h-12 text-white/40" />
-                    </div>
-                    <p className="text-white/60 text-sm">生成数字人视频</p>
-                    <Button className="mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-0" onClick={() => toast.info("请在下方填写脚本后生成视频")}>
-                      <Wand2 className="w-4 h-4 mr-2" />
-                      开始生成
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </section>
-
           {/* 功能卡片 */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-white text-center mb-6">更多创作工具</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
-              {FEATURES.map((feature) => (
-                <Card
-                  key={feature.id}
-                  onClick={() => {
-                    if (feature.scroll) {
-                      document.getElementById("digital-human")?.scrollIntoView({ behavior: "smooth" });
-                    } else {
-                      router.push(feature.href);
-                    }
-                  }}
-                  className="group relative overflow-hidden bg-white/5 border-white/10 backdrop-blur-sm hover:scale-[1.02] transition-all duration-300 cursor-pointer min-h-[200px]"
-                >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {FEATURES.map((feature) => (
+              <Link key={feature.id} href={feature.href}>
+                <Card className="group relative overflow-hidden bg-white/5 border-white/10 backdrop-blur-sm hover:scale-[1.02] transition-all duration-300 cursor-pointer min-h-[200px]">
                   {/* 渐变背景 */}
                   <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-opacity`} />
                   
@@ -245,8 +183,8 @@ export default function Home() {
                     </div>
                   </div>
                 </Card>
-              ))}
-            </div>
+              </Link>
+            ))}
           </div>
 
           {/* 底部提示 */}
