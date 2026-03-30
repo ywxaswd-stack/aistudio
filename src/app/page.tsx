@@ -123,7 +123,7 @@ export default function Home() {
                   {/* 余额 */}
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
                     <Wallet className="w-4 h-4 text-yellow-400" />
-                    <span className="text-sm font-medium text-white">{userInfo.balance.toFixed(1)}秒</span>
+                    <span className="text-sm font-medium text-white">{userInfo.seconds}秒</span>
                   </div>
                   {/* 头像 */}
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
