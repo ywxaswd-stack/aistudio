@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/auth";
+import { writeFileSync, mkdirSync, existsSync } from "fs";
+import { join } from "path";
 
 const ARK_VIDEO_API_KEY = process.env.ARK_VIDEO_API_KEY || "";
 
@@ -22,6 +24,22 @@ export async function POST(request: NextRequest) {
 
     console.log("[视频生成] 开始生成:", { mode, resolution, duration, ratio, hasImage: !!imageUrl });
 
+    // 处理 base64 图片，保存到 public/uploads 并构造公网URL
+    let finalImageUrl = imageUrl;
+    if (imageUrl && imageUrl.startsWith("data:")) {
+      console.log("[视频生成] 检测到 base64 图片，开始转换...");
+      const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, "");
+      const ext = imageUrl.match(/^data:image\/(\w+);base64,/)?.[1] || "jpg";
+      const uploadDir = join(process.cwd(), "public", "uploads");
+      if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
+      const fileName = `video_ref_${Date.now()}.${ext}`;
+      const filePath = join(uploadDir, fileName);
+      writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+      const domain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || "http://localhost:5000";
+      finalImageUrl = `${domain}/uploads/${fileName}`;
+      console.log("[视频生成] 图片已保存:", finalImageUrl);
+    }
+
     const content: any[] = [
       {
         type: "text",
@@ -30,8 +48,8 @@ export async function POST(request: NextRequest) {
     ];
 
     // 图生视频模式
-    if (mode === "i2v" && imageUrl) {
-      content.push({ type: "image_url", image_url: { url: imageUrl } });
+    if (mode === "i2v" && finalImageUrl) {
+      content.push({ type: "image_url", image_url: { url: finalImageUrl } });
     }
 
     const model = mode === "i2v"
