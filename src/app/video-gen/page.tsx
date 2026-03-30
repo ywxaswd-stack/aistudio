@@ -6,16 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { useRouter } from "next/navigation";
+import { Header } from "@/components/Header";
 import {
-  ArrowLeft, Video, Upload, Play, Download, Loader2,
+  Video, Upload, Play, Download, Loader2,
   CheckCircle2, AlertCircle, Wand2, Image as ImageIcon
 } from "lucide-react";
 import { toast } from "sonner";
 
 const MODE_OPTIONS = [
-  { id: "t2v", name: "文生视频", icon: Wand2, desc: "输入文字描述生成视频" },
-  { id: "i2v", name: "图生视频", icon: ImageIcon, desc: "上传图片让图片动起来" },
+  { id: "t2v", name: "文生视频", icon: Wand2, desc: "输入文字描述生成视频", gradient: "from-red-600 to-rose-600" },
+  { id: "i2v", name: "图生视频", icon: ImageIcon, desc: "上传图片让图片动起来", gradient: "from-red-600 to-orange-600" },
 ];
 
 const DURATION_OPTIONS = [
@@ -24,9 +24,9 @@ const DURATION_OPTIONS = [
 ];
 
 const RATIO_OPTIONS = [
-  { value: "16:9", label: "横屏 16:9", icon: "🖥️" },
-  { value: "9:16", label: "竖屏 9:16", icon: "📱" },
-  { value: "1:1", label: "方形 1:1", icon: "⬜" },
+  { value: "16:9", label: "横屏", icon: "🖥️" },
+  { value: "9:16", label: "竖屏", icon: "📱" },
+  { value: "1:1", label: "方形", icon: "⬜" },
 ];
 
 const RESOLUTION_OPTIONS = [
@@ -35,7 +35,6 @@ const RESOLUTION_OPTIONS = [
 ];
 
 export default function VideoGenPage() {
-  const router = useRouter();
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<"t2v" | "i2v">("t2v");
@@ -203,259 +202,251 @@ export default function VideoGenPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.push("/")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold">AI 视频生成</h1>
-              <p className="text-sm text-slate-500">即梦文生视频 / 图生视频</p>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[#0a0a0f]">
+      <Header 
+        title="AI视频" 
+        subtitle="文字或图片生成视频"
+        gradient="from-red-600 to-rose-600"
+      />
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto space-y-6">
-          {/* 模式选择 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Video className="h-5 w-5" />
-                选择生成模式
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {MODE_OPTIONS.map((opt) => (
-                  <div
-                    key={opt.id}
-                    onClick={() => setMode(opt.id as "t2v" | "i2v")}
-                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                      mode === opt.id
-                        ? "border-purple-500 bg-purple-50"
-                        : "border-gray-200 hover:border-purple-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <opt.icon className="h-5 w-5" />
-                      <span className="font-medium">{opt.name}</span>
-                      {mode === opt.id && <CheckCircle2 className="h-4 w-4 text-purple-500 ml-auto" />}
-                    </div>
-                    <p className="text-xs text-slate-500">{opt.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 图生视频：图片上传 */}
-          {mode === "i2v" && (
-            <Card>
+      <main className="pt-24 pb-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto space-y-6">
+            {/* 模式选择 */}
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Upload className="h-5 w-5" />
-                  上传参考图片
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Video className="h-5 w-5" />
+                  选择生成模式
                 </CardTitle>
-                <CardDescription>上传一张图片，让它动起来（支持 JPG/PNG，最大5MB）</CardDescription>
               </CardHeader>
               <CardContent>
-                <div
-                  onClick={() => imageInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                    imagePreview
-                      ? "border-green-500 bg-green-50"
-                      : "border-slate-300 hover:border-purple-400"
-                  }`}
-                >
-                  <input
-                    ref={imageInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageChange}
-                    disabled={generating}
-                  />
-                  {imagePreview ? (
-                    <div className="space-y-2">
-                      <img
-                        src={imagePreview}
-                        alt="预览"
-                        className="max-h-48 mx-auto rounded-lg object-contain"
-                      />
-                      <p className="text-sm text-green-600">点击更换图片</p>
+                <div className="grid grid-cols-2 gap-4">
+                  {MODE_OPTIONS.map((opt) => (
+                    <div
+                      key={opt.id}
+                      onClick={() => setMode(opt.id as "t2v" | "i2v")}
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        mode === opt.id
+                          ? "border-red-500 bg-red-500/10"
+                          : "border-white/10 hover:border-white/30"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${opt.gradient} flex items-center justify-center`}>
+                          <opt.icon className="h-5 w-5 text-white" />
+                        </div>
+                        <span className="font-medium text-white">{opt.name}</span>
+                        {mode === opt.id && <CheckCircle2 className="h-4 w-4 text-red-500 ml-auto" />}
+                      </div>
+                      <p className="text-xs text-white/50">{opt.desc}</p>
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Upload className="h-12 w-12 mx-auto text-slate-400" />
-                      <p className="text-slate-600">点击上传图片</p>
-                    </div>
-                  )}
+                  ))}
                 </div>
               </CardContent>
             </Card>
-          )}
 
-          {/* 视频描述 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>视频描述</CardTitle>
-              <CardDescription>描述你想要生成的视频内容，支持中文，300字以内</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="例如：一只橘色的猫咪在阳光下打盹，背景是开满鲜花的草地..."
-                rows={4}
-                maxLength={300}
-                disabled={generating}
-                className="resize-none"
-              />
-              <div className="flex justify-between text-sm text-slate-500">
-                <span>提示：描述越具体，生成效果越好</span>
-                <span>{prompt.length}/300</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 参数设置 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>参数设置</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* 时长 */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">视频时长</label>
-                <div className="flex gap-3">
-                  {DURATION_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setDuration(opt.value)}
+            {/* 图生视频：图片上传 */}
+            {mode === "i2v" && (
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-white">
+                    <Upload className="h-5 w-5" />
+                    上传参考图片
+                  </CardTitle>
+                  <CardDescription className="text-white/50">上传一张图片，让它动起来（支持 JPG/PNG，最大5MB）</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div
+                    onClick={() => imageInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+                      imagePreview
+                        ? "border-green-500/50 bg-green-500/5"
+                        : "border-white/20 hover:border-white/40"
+                    }`}
+                  >
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageChange}
                       disabled={generating}
-                      className={`flex-1 py-2 rounded-lg border-2 transition-all ${
-                        duration === opt.value
-                          ? "border-purple-500 bg-purple-50 text-purple-700"
-                          : "border-gray-200 hover:border-purple-300"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 比例 */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">视频比例</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {RATIO_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setRatio(opt.value)}
-                      disabled={generating}
-                      className={`py-3 rounded-lg border-2 transition-all ${
-                        ratio === opt.value
-                          ? "border-purple-500 bg-purple-50"
-                          : "border-gray-200 hover:border-purple-300"
-                      }`}
-                    >
-                      <div className="text-xl mb-1">{opt.icon}</div>
-                      <div className="text-sm">{opt.label.split(" ")[0]}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 分辨率 */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">分辨率</label>
-                <div className="flex gap-3">
-                  {RESOLUTION_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setResolution(opt.value)}
-                      disabled={generating}
-                      className={`flex-1 py-2 rounded-lg border-2 transition-all ${
-                        resolution === opt.value
-                          ? "border-purple-500 bg-purple-50 text-purple-700"
-                          : "border-gray-200 hover:border-purple-300"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 生成按钮 */}
-          <Button
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-            size="lg"
-            onClick={handleGenerate}
-            disabled={generating || !prompt.trim() || (mode === "i2v" && !imageFile)}
-          >
-            {generating ? (
-              <>
-                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                生成中... {progress}%
-              </>
-            ) : (
-              <>
-                <Video className="h-5 w-5 mr-2" />
-                开始生成
-              </>
+                    />
+                    {imagePreview ? (
+                      <div className="space-y-2">
+                        <img
+                          src={imagePreview}
+                          alt="预览"
+                          className="max-h-48 mx-auto rounded-lg object-contain"
+                        />
+                        <p className="text-sm text-green-400">点击更换图片</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Upload className="h-12 w-12 mx-auto text-white/40" />
+                        <p className="text-white/60">点击上传图片</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             )}
-          </Button>
 
-          {/* 进度条 */}
-          {generating && (
-            <Progress value={progress} className="h-2" />
-          )}
-
-          {/* 错误提示 */}
-          {error && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 text-red-700">
-              <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-              <p className="text-sm">{error}</p>
-            </div>
-          )}
-
-          {/* 生成结果 */}
-          {resultVideo && (
-            <Card>
+            {/* 视频描述 */}
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  生成完成
-                </CardTitle>
+                <CardTitle className="text-white">视频描述</CardTitle>
+                <CardDescription className="text-white/50">描述你想要生成的视频内容，支持中文，300字以内</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <video
-                  src={resultVideo}
-                  controls
-                  className="w-full rounded-lg bg-black aspect-video"
+                <Textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="例如：一只橘色的猫咪在阳光下打盹，背景是开满鲜花的草地..."
+                  rows={4}
+                  maxLength={300}
+                  disabled={generating}
+                  className="resize-none bg-white/5 border-white/20 text-white placeholder:text-white/40"
                 />
-                <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1" onClick={handleDownload}>
-                    <Download className="h-4 w-4 mr-2" />
-                    下载视频
-                  </Button>
-                  <Button variant="outline" className="flex-1" onClick={handleReset}>
-                    重新生成
-                  </Button>
+                <div className="flex justify-between text-sm text-white/40">
+                  <span>提示：描述越具体，生成效果越好</span>
+                  <span>{prompt.length}/300</span>
                 </div>
               </CardContent>
             </Card>
-          )}
+
+            {/* 参数设置 */}
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white">参数设置</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 时长 */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white">视频时长</label>
+                  <div className="flex gap-3">
+                    {DURATION_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setDuration(opt.value)}
+                        disabled={generating}
+                        className={`flex-1 py-2 rounded-xl border-2 transition-all ${
+                          duration === opt.value
+                            ? "border-red-500 bg-red-500/10 text-red-400"
+                            : "border-white/10 text-white hover:border-white/30"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 比例 */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white">视频比例</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {RATIO_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setRatio(opt.value)}
+                        disabled={generating}
+                        className={`py-3 rounded-xl border-2 transition-all ${
+                          ratio === opt.value
+                            ? "border-red-500 bg-red-500/10"
+                            : "border-white/10 hover:border-white/30"
+                        }`}
+                      >
+                        <div className="text-xl mb-1">{opt.icon}</div>
+                        <div className="text-sm text-white">{opt.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 分辨率 */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white">分辨率</label>
+                  <div className="flex gap-3">
+                    {RESOLUTION_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setResolution(opt.value)}
+                        disabled={generating}
+                        className={`flex-1 py-2 rounded-xl border-2 transition-all ${
+                          resolution === opt.value
+                            ? "border-red-500 bg-red-500/10 text-red-400"
+                            : "border-white/10 text-white hover:border-white/30"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 生成按钮 */}
+            <Button
+              className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 border-0"
+              size="lg"
+              onClick={handleGenerate}
+              disabled={generating || !prompt.trim() || (mode === "i2v" && !imageFile)}
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  生成中... {progress}%
+                </>
+              ) : (
+                <>
+                  <Video className="h-5 w-5 mr-2" />
+                  开始生成
+                </>
+              )}
+            </Button>
+
+            {/* 进度条 */}
+            {generating && <Progress value={progress} className="h-1" />}
+
+            {/* 错误提示 */}
+            {error && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 text-red-400">
+                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            {/* 生成结果 */}
+            {resultVideo && (
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-white">
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    生成完成
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <video
+                    src={resultVideo}
+                    controls
+                    className="w-full rounded-lg bg-black aspect-video"
+                  />
+                  <div className="flex gap-3">
+                    <Button variant="outline" className="flex-1 border-white/20 text-white hover:bg-white/10" onClick={handleDownload}>
+                      <Download className="h-4 w-4 mr-2" />
+                      下载视频
+                    </Button>
+                    <Button variant="outline" className="flex-1 border-white/20 text-white hover:bg-white/10" onClick={handleReset}>
+                      重新生成
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
       </main>
     </div>
