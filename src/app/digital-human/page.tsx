@@ -346,6 +346,17 @@ export default function Home() {
   const [digitalHumanPrompt, setDigitalHumanPrompt] = useState<string>(""); // 提示词
   const [digitalHumanTaskId, setDigitalHumanTaskId] = useState<string | null>(null); // 数字人任务ID
   const [digitalHumanVideo, setDigitalHumanVideo] = useState<string | null>(null); // 生成的数字人视频
+  const [isGenerating, setIsGenerating] = useState(false); // 数字人生成中状态
+  const [generatingProgress, setGeneratingProgress] = useState(0); // 伪进度
+  
+  // 动态提示文字
+  const generatingTips = [
+    "正在生成 TTS 语音...",
+    "正在识别人物主体...",
+    "AI 正在生成数字人视频...",
+    "即将完成，请稍候..."
+  ];
+  const [generatingTipIndex, setGeneratingTipIndex] = useState(0);
   
   // 各步骤数据
   const [industryAnalysis, setIndustryAnalysis] = useState<any>(null);
@@ -366,6 +377,30 @@ export default function Home() {
     setCurrentStep(step);
     setVisitedSteps(prev => new Set([...prev, step]));
   };
+  
+  // 伪进度：每5秒增加5%，最多到90%
+  useEffect(() => {
+    if (isGenerating) {
+      const timer = setInterval(() => {
+        setGeneratingProgress(p => Math.min(p + 5, 90));
+      }, 5000);
+      return () => clearInterval(timer);
+    } else {
+      setGeneratingProgress(0);
+    }
+  }, [isGenerating]);
+  
+  // 动态提示文字轮播：每10秒切换一条
+  useEffect(() => {
+    if (isGenerating) {
+      const timer = setInterval(() => {
+        setGeneratingTipIndex(prev => (prev + 1) % generatingTips.length);
+      }, 10000);
+      return () => clearInterval(timer);
+    } else {
+      setGeneratingTipIndex(0);
+    }
+  }, [isGenerating]);
   
   // 根据输入自动推荐时长
   const getRecommendedDuration = (industry: string, goal: string): number => {
@@ -495,13 +530,17 @@ export default function Home() {
         if (data.status === "completed" && data.video_url) {
           clearInterval(pollInterval);
           setDigitalHumanVideo(data.video_url);
+          setIsGenerating(false);
+          setGeneratingProgress(100);
           toast.success("数字人视频生成完成！");
         } else if (data.status === "failed") {
           clearInterval(pollInterval);
+          setIsGenerating(false);
           toast.error("数字人视频生成失败");
         }
       } catch (error) {
         clearInterval(pollInterval);
+        setIsGenerating(false);
         toast.error("查询状态失败");
       }
     }, 5000);
@@ -1211,6 +1250,7 @@ export default function Home() {
                       }
 
                       setLoading(true);
+                      setIsGenerating(true);
                       try {
                         // 直接使用图片URL（测试模式下后端会替换为测试图片）
                         // 只有当后端关闭测试模式时，才需要上传图片获取公网URL
@@ -1237,9 +1277,11 @@ export default function Home() {
                           pollDigitalHumanStatus(data.task_id);
                         } else {
                           toast.error(data.error || "生成失败");
+                          setIsGenerating(false);
                         }
                       } catch (error) {
                         toast.error("生成失败");
+                        setIsGenerating(false);
                       } finally {
                         setLoading(false);
                       }
@@ -1259,6 +1301,37 @@ export default function Home() {
                       </>
                     )}
                   </Button>
+
+                  {/* 生成等待界面 */}
+                  {isGenerating && !digitalHumanVideo && (
+                    <div className="mt-6 p-6 bg-white/5 rounded-xl border border-purple-500/30">
+                      <div className="text-center space-y-4">
+                        <div className="flex justify-center">
+                          <div className="w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center">
+                            <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white mb-2">数字人视频生成中</h3>
+                          <p className="text-sm text-gray-400">数字人生成通常需要 1-3 分钟，请耐心等待</p>
+                        </div>
+                        {/* 动态提示文字 */}
+                        <p className="text-purple-400 animate-pulse">
+                          {generatingTips[generatingTipIndex]}
+                        </p>
+                        {/* 进度条 */}
+                        <div className="space-y-2">
+                          <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
+                              style={{ width: `${generatingProgress}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500">{generatingProgress}%</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* 生成结果 */}
                   {digitalHumanVideo && (
